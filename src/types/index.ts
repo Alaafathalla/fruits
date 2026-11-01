@@ -31,3 +31,11 @@ export interface JuiceRecipe {
   icon: string;
 }
 
+export interface ScoreTier {
+  rank: number;
+  title: string;
+  minScore: number;
+  maxScore: number;
+  badgeColor: string;
+  icon: string;
+}
