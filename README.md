@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fruit Slash 3D — Gaming Hero Experience
+
+A fast, interactive 3D WebGL fruit cutting hero experience built with **Next.js 16 (App Router)**, **React 19**, **Three.js (v0.187)**, and **Tailwind CSS**.
+
+Everything is unified inside a high-octane **Arcade Gaming Hero Section** featuring dynamic gaming colors, retro-futuristic grid backgrounds, real-time reactive lighting, and an all-in-one command deck.
+
+---
+
+## What's in the Gaming Hero Viewport
+
+### 1. Unified Hero Command Deck ("All-in-One")
+* **Top Hero Battle HUD**:
+  - Live Score counter (`SCORE: 2,450`), Active Combo multiplier (`x4!`), and High Score tracker.
+  - Quick game mode switcher: **Zen Mode** (Relaxed infinite slicing) vs. **Arcade Mode** (60s timer with bombs).
+  - Procedural Web Audio API toggle (synthesized whooshes, slicing squelches, and fanfare).
+* **Left Gaming Deck — Blade & Color Studio**:
+  - **Gaming Lighting Themes**: *Cyberpunk 2088* (Cyan/Fuchsia), *Synthwave Night* (Hot Pink/Amber), *Solar Overdrive* (Solar Orange/Rose), *Matrix Emerald* (Toxic Lime/Teal).
+  - **Blade Trail Presets**: Cyber Cyan, Hot Magenta, Solar Amber, Toxic Lime, Amethyst Neon.
+  - **Interactive Custom Color Handle**: Instant reactive color picker that updates the blade laser, trail glow, and background aura in real time.
+* **Center Stage — 3D Fruit Cutting Arena**:
+  - Ballistic 3D fruit launching (Watermelons, Dragonfruits, Oranges, Apples, Lemons, Kiwis, Bombs).
+  - Dual-half mesh cleaving along the slice plane with opposing angular and lateral velocity.
+  - 35+ 3D juice particles bursting outward with gravity and decay.
+  - Neon corner brackets and glowing cybernetic borders.
+* **Right Gaming Deck — Smoothie Bar & Sliced Fruit Inventory**:
+  - Live tally of every sliced fruit species.
+  - Unlocks legendary tropical smoothie blends (*Dragonfruit Elixir*, *Watermelon Splash*, *Solar Sunrise*) with animated progress bars.
+
+---
+
+### 2. Gaming Background Aesthetics
+* Multi-layer gaming color backdrop:
+  - Deep cybernetic purple & obsidian night base (`#09021a` to `#10052a`).
+  - Animated glowing gaming radial spots (Neon Magenta, Cyber Cyan, and player-selected reactive aura).
+  - Perspective retro-futuristic laser grid pattern (`.gaming-grid`).
+  - Glassmorphism HUD cards with glowing neon borders (`border-purple-500/30`, `shadow-[0_0_25px_rgba(139,92,246,0.15)]`).
+
+---
 
 ## Getting Started
 
-First, run the development server:
-
+### Development Server
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Production Build
+```bash
+npm run build
+npm run start
+```
