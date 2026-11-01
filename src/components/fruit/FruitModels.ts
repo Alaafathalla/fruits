@@ -480,3 +480,4 @@ export function getFruitJuiceColor(kind: FruitKind): number {
       return 0xff2200;
   }
 }
+

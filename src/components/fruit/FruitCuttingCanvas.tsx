@@ -99,7 +99,6 @@ export default function FruitCuttingCanvas({
   // Spawn a fresh fruit
   const spawnFruit = useCallback((scene: THREE.Scene) => {
     const fruitTypes: FruitKind[] = ['watermelon', 'orange', 'apple', 'lemon', 'kiwi', 'dragonfruit'];
-    // 12% chance of bomb
     const isBomb = Math.random() < 0.12;
     const kind: FruitKind = isBomb
       ? 'bomb'
@@ -107,7 +106,6 @@ export default function FruitCuttingCanvas({
 
     const mesh = createWholeFruitMesh(kind);
 
-    // Spawn near bottom screen width
     const startX = (Math.random() - 0.5) * 8.5;
     const startY = -6.8;
     const startZ = (Math.random() - 0.5) * 2;
@@ -115,7 +113,6 @@ export default function FruitCuttingCanvas({
     mesh.position.set(startX, startY, startZ);
     scene.add(mesh);
 
-    // Ballistic Launch Velocity
     const targetVx = (Math.random() - 0.5) * 3.2 - startX * 0.28;
     const targetVy = 13.8 + Math.random() * 3.6;
     const targetVz = (Math.random() - 0.5) * 1.5;
@@ -141,9 +138,6 @@ export default function FruitCuttingCanvas({
   // Spawn Juice Splash
   const createJuiceSplash = (scene: THREE.Scene, pos: THREE.Vector3, kind: FruitKind) => {
     const color = getFruitJuiceColor(kind);
-    const particleCount = kind === 'bomb' ? 50 : 36;
-    const geom = new THREE.SphereGeometry(0.09, 8, 8);
-    const mat = new THREE.MeshBasicMaterial({ color });
     const particleCount = kind === 'bomb' ? 55 : 46;
 
     for (let i = 0; i < particleCount; i++) {
@@ -154,14 +148,12 @@ export default function FruitCuttingCanvas({
       pMesh.position.copy(pos);
       scene.add(pMesh);
 
-      const speed = 4.5 + Math.random() * 8;
       const speed = 5.0 + Math.random() * 8.5;
       const angle = Math.random() * Math.PI * 2;
       const zAngle = (Math.random() - 0.5) * Math.PI;
 
       const vel = new THREE.Vector3(
         Math.cos(angle) * Math.cos(zAngle) * speed,
-        Math.sin(angle) * Math.cos(zAngle) * speed + 3.2,
         Math.sin(angle) * Math.cos(zAngle) * speed + 3.5,
         Math.sin(zAngle) * speed
       );
@@ -171,7 +163,6 @@ export default function FruitCuttingCanvas({
         pos: pos.clone(),
         vel,
         life: 0,
-        maxLife: 0.65 + Math.random() * 0.45,
         maxLife: 0.7 + Math.random() * 0.45,
       });
     }
@@ -187,7 +178,6 @@ export default function FruitCuttingCanvas({
     fruit.sliced = true;
     scene.remove(fruit.mesh);
 
-    // Check combo timing
     const now = performance.now();
     if (now - lastSliceTimeRef.current < 450) {
       currentComboRef.current += 1;
@@ -204,7 +194,6 @@ export default function FruitCuttingCanvas({
       return;
     }
 
-    // Play sliced sound
     sound.playSlice(fruit.kind);
     if (currentComboRef.current >= 3) {
       sound.playCombo(currentComboRef.current);
@@ -238,15 +227,12 @@ export default function FruitCuttingCanvas({
     halfA.position.copy(fruit.pos);
     halfB.position.copy(fruit.pos);
 
-    // Cut rotation
     halfA.rotation.z = cutAngle;
     halfB.rotation.z = cutAngle;
 
     scene.add(halfA, halfB);
 
-    // Outward impulse perpendicular to cut vector
     const perpAngle = cutAngle + Math.PI / 2;
-    const impulse = 3.8;
     const impulse = 4.2;
 
     const velA = new THREE.Vector3(
@@ -266,10 +252,7 @@ export default function FruitCuttingCanvas({
       pos: fruit.pos.clone(),
       vel: velA,
       rotSpeed: new THREE.Vector3(
-        (Math.random() - 0.5) * 7,
-        (Math.random() - 0.5) * 7,
-        (Math.random() - 0.5) * 7
-          (Math.random() - 0.5) * 7.5,
+        (Math.random() - 0.5) * 7.5,
         (Math.random() - 0.5) * 7.5,
         (Math.random() - 0.5) * 7.5
       ),
@@ -280,16 +263,12 @@ export default function FruitCuttingCanvas({
       pos: fruit.pos.clone(),
       vel: velB,
       rotSpeed: new THREE.Vector3(
-        (Math.random() - 0.5) * 7,
-        (Math.random() - 0.5) * 7,
-        (Math.random() - 0.5) * 7
-          (Math.random() - 0.5) * 7.5,
+        (Math.random() - 0.5) * 7.5,
         (Math.random() - 0.5) * 7.5,
         (Math.random() - 0.5) * 7.5
       ),
     });
 
-    // Splatter particles
     createJuiceSplash(scene, fruit.pos, fruit.kind);
   };
 
@@ -308,15 +287,12 @@ export default function FruitCuttingCanvas({
     for (const fruit of activeFruitsRef.current) {
       if (fruit.sliced) continue;
 
-      // Project 3D fruit center to 2D screen coordinates
       const projected = fruit.pos.clone().project(camera);
       const fx = projected.x * halfW + halfW;
       const fy = -(projected.y * halfH) + halfH;
 
-      // Screen radius
       const screenRadius = (fruit.radius * halfH) / 6.0;
 
-      // Segment distance math
       const dx = p2.x - p1.x;
       const dy = p2.y - p1.y;
       const l2 = dx * dx + dy * dy;
@@ -331,20 +307,19 @@ export default function FruitCuttingCanvas({
 
       const dist = Math.hypot(fx - closestX, fy - closestY);
 
-      if (dist < screenRadius + 26) {
         if (dist < screenRadius + 28) {
           sliceFruit(fruit, cutAngle);
         }
-      }
-    };
+    }
+  };
 
-    // Synchronize Lights with Theme
-    useEffect(() => {
-      if (ambientLightRef.current && dirLightRef.current && rimLightRef.current) {
-        ambientLightRef.current.color.setHex(colorTheme.ambientLightHex);
-        dirLightRef.current.color.setHex(colorTheme.dirLightHex);
-      }
-    }, [colorTheme]);
+  // Synchronize Lights with Theme
+  useEffect(() => {
+    if (ambientLightRef.current && dirLightRef.current && rimLightRef.current) {
+      ambientLightRef.current.color.setHex(colorTheme.ambientLightHex);
+      dirLightRef.current.color.setHex(colorTheme.dirLightHex);
+    }
+  }, [colorTheme]);
 
     // Main Three.js Lifecycle
     useEffect(() => {
@@ -354,17 +329,13 @@ export default function FruitCuttingCanvas({
       const width = container.clientWidth;
       const height = container.clientHeight;
 
-      // Scene
       const scene = new THREE.Scene();
       sceneRef.current = scene;
 
-      // Camera
       const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100);
       camera.position.set(0, 0, 15);
       cameraRef.current = camera;
 
-      // WebGL Renderer
-      // WebGL Renderer with High Vibrancy Tone Mapping
       const renderer = new THREE.WebGLRenderer({
         antialias: true,
         alpha: true,
@@ -374,21 +345,15 @@ export default function FruitCuttingCanvas({
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.shadowMap.enabled = true;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.15;
       renderer.toneMappingExposure = 1.25;
       container.appendChild(renderer.domElement);
       rendererRef.current = renderer;
 
-      // Studio Lighting
-      const ambientLight = new THREE.AmbientLight(colorTheme.ambientLightHex, 1.9);
-      const dirLight = new THREE.DirectionalLight(colorTheme.dirLightHex, 2.6);
-      // Powerful Studio Lighting
       const ambientLight = new THREE.AmbientLight(colorTheme.ambientLightHex, 2.2);
       const dirLight = new THREE.DirectionalLight(colorTheme.dirLightHex, 3.0);
       dirLight.position.set(6, 12, 8);
       dirLight.castShadow = true;
 
-      const rimLight = new THREE.DirectionalLight(0xffffff, 1.8);
       const rimLight = new THREE.DirectionalLight(0xffffff, 2.2);
       rimLight.position.set(-6, -4, 4);
 
@@ -397,226 +362,197 @@ export default function FruitCuttingCanvas({
       dirLightRef.current = dirLight;
       rimLightRef.current = rimLight;
 
-      // Subtle 3D background grid rings
-      const ringGeom = new THREE.RingGeometry(8, 8.12, 64);
       const ringGeom = new THREE.RingGeometry(8, 8.14, 64);
       const ringMat = new THREE.MeshBasicMaterial({
-        color: 0x475569,
         color: 0x581c87,
         side: THREE.DoubleSide,
         transparent: true,
-        opacity: 0.28,
         opacity: 0.35,
       });
       const ring = new THREE.Mesh(ringGeom, ringMat);
       ring.position.z = -5;
       scene.add(ring);
 
-      // Animation & Physics Loop
       let animId: number;
       let lastTime = performance.now();
 
-      const loop = (time: number) => {
-        animId = requestAnimationFrame(loop);
+        const loop = (time: number) => {
+          animId = requestAnimationFrame(loop);
 
-        const dt = Math.min((time - lastTime) / 1000, 0.05);
-        lastTime = time;
+          const dt = Math.min((time - lastTime) / 1000, 0.05);
+          lastTime = time;
 
-        if (!isPaused) {
-          // Spawn fruits periodically
-          if (time - lastSpawnTimeRef.current > 1050 + Math.random() * 750) {
-            if (time - lastSpawnTimeRef.current > 1000 + Math.random() * 700) {
-              spawnFruit(scene);
-              // 40% chance of double launch
-              if (Math.random() < 0.4) {
-                if (Math.random() < 0.42) {
-                  setTimeout(() => {
-                    if (sceneRef.current) spawnFruit(sceneRef.current);
-                  }, 260);
-                }, 250);
-  }
-  lastSpawnTimeRef.current = time;
-}
-
-// 1. Update Active Flying Fruits
-const gravity = 18;
-for (let i = activeFruitsRef.current.length - 1; i >= 0; i--) {
-  const f = activeFruitsRef.current[i];
-  if (f.sliced) {
-    activeFruitsRef.current.splice(i, 1);
-    continue;
+if (!isPaused) {
+  if (time - lastSpawnTimeRef.current > 1000 + Math.random() * 700) {
+    spawnFruit(scene);
+    if (Math.random() < 0.42) {
+      setTimeout(() => {
+        if (sceneRef.current) spawnFruit(sceneRef.current);
+      }, 250);
+    }
+    lastSpawnTimeRef.current = time;
   }
 
-  f.vel.y -= gravity * dt;
-  f.pos.addScaledVector(f.vel, dt);
-  f.mesh.position.copy(f.pos);
-
-  f.mesh.rotation.x += f.rotSpeed.x * dt;
-  f.mesh.rotation.y += f.rotSpeed.y * dt;
-  f.mesh.rotation.z += f.rotSpeed.z * dt;
-
-  // Remove if fallen below screen
-  if (f.pos.y < -8.5 && f.vel.y < 0) {
-    scene.remove(f.mesh);
-    activeFruitsRef.current.splice(i, 1);
-  }
-}
-
-// 2. Update Sliced Halves
-for (let i = activeHalvesRef.current.length - 1; i >= 0; i--) {
-  const h = activeHalvesRef.current[i];
-  h.vel.y -= gravity * dt * 1.1;
-  h.pos.addScaledVector(h.vel, dt);
-  h.mesh.position.copy(h.pos);
-
-  h.mesh.rotation.x += h.rotSpeed.x * dt;
-  h.mesh.rotation.y += h.rotSpeed.y * dt;
-  h.mesh.rotation.z += h.rotSpeed.z * dt;
-
-  if (h.pos.y < -9.5) {
-    scene.remove(h.mesh);
-    activeHalvesRef.current.splice(i, 1);
-  }
-}
-
-// 3. Update Juice Splash Particles
-for (let i = particlesRef.current.length - 1; i >= 0; i--) {
-  const p = particlesRef.current[i];
-  p.life += dt;
-  p.vel.y -= gravity * dt * 0.7;
-  p.pos.addScaledVector(p.vel, dt);
-  p.mesh.position.copy(p.pos);
-
-  const scale = Math.max(0.01, 1 - p.life / p.maxLife);
-  p.mesh.scale.set(scale, scale, scale);
-
-  if (p.life >= p.maxLife) {
-    scene.remove(p.mesh);
-    particlesRef.current.splice(i, 1);
-  }
-}
+    const gravity = 18;
+    for (let i = activeFruitsRef.current.length - 1; i >= 0; i--) {
+      const f = activeFruitsRef.current[i];
+      if (f.sliced) {
+        activeFruitsRef.current.splice(i, 1);
+        continue;
       }
+
+      f.vel.y -= gravity * dt;
+      f.pos.addScaledVector(f.vel, dt);
+      f.mesh.position.copy(f.pos);
+
+      f.mesh.rotation.x += f.rotSpeed.x * dt;
+      f.mesh.rotation.y += f.rotSpeed.y * dt;
+      f.mesh.rotation.z += f.rotSpeed.z * dt;
+
+    if (f.pos.y < -8.5 && f.vel.y < 0) {
+      scene.remove(f.mesh);
+      activeFruitsRef.current.splice(i, 1);
+    }
+  }
+
+    for (let i = activeHalvesRef.current.length - 1; i >= 0; i--) {
+      const h = activeHalvesRef.current[i];
+      h.vel.y -= gravity * dt * 1.1;
+      h.pos.addScaledVector(h.vel, dt);
+      h.mesh.position.copy(h.pos);
+
+      h.mesh.rotation.x += h.rotSpeed.x * dt;
+      h.mesh.rotation.y += h.rotSpeed.y * dt;
+      h.mesh.rotation.z += h.rotSpeed.z * dt;
+
+    if (h.pos.y < -9.5) {
+      scene.remove(h.mesh);
+      activeHalvesRef.current.splice(i, 1);
+    }
+  }
+
+    for (let i = particlesRef.current.length - 1; i >= 0; i--) {
+      const p = particlesRef.current[i];
+      p.life += dt;
+      p.vel.y -= gravity * dt * 0.7;
+      p.pos.addScaledVector(p.vel, dt);
+      p.mesh.position.copy(p.pos);
+
+      const scale = Math.max(0.01, 1 - p.life / p.maxLife);
+      p.mesh.scale.set(scale, scale, scale);
+
+    if (p.life >= p.maxLife) {
+      scene.remove(p.mesh);
+      particlesRef.current.splice(i, 1);
+    }
+  }
+}
 
 renderer.render(scene, camera);
 
-// Draw Glowing 2D Blade Trail on Canvas Overlay
-// Draw Powerful Laser Blade Trail & Hit Text Overlay
-const trailCanvas = trailCanvasRef.current;
-if (trailCanvas) {
-  const tCtx = trailCanvas.getContext('2d');
-  if (tCtx) {
-    tCtx.clearRect(0, 0, trailCanvas.width, trailCanvas.height);
+    const trailCanvas = trailCanvasRef.current;
+    if (trailCanvas) {
+      const tCtx = trailCanvas.getContext('2d');
+      if (tCtx) {
+        tCtx.clearRect(0, 0, trailCanvas.width, trailCanvas.height);
 
-    // Clean points older than 160ms
-    const now = performance.now();
-    trailPointsRef.current = trailPointsRef.current.filter((p) => now - p.time < 170);
-    trailPointsRef.current = trailPointsRef.current.filter((p) => now - p.time < 180);
+        const now = performance.now();
+        trailPointsRef.current = trailPointsRef.current.filter((p) => now - p.time < 180);
 
-    const pts = trailPointsRef.current;
-    if (pts.length > 2) {
-      tCtx.lineCap = 'round';
-      tCtx.lineJoin = 'round';
+          const pts = trailPointsRef.current;
+          if (pts.length > 2) {
+            tCtx.lineCap = 'round';
+            tCtx.lineJoin = 'round';
 
-      // 1. Pass: Wide Neon Volumetric Bloom
-      tCtx.save();
-      tCtx.shadowColor = bladeStyle.color;
-      tCtx.shadowBlur = 30;
-      for (let i = 1; i < pts.length; i++) {
-        const pA = pts[i - 1];
-        const pB = pts[i];
-        const age = (now - pB.time) / 170;
-        const age = (now - pB.time) / 180;
-        const alpha = Math.max(0, 1 - age);
-        const width = Math.max(3, (1 - age) * 14);
-        const width = Math.max(4, (1 - age) * 20);
+              // 1. Pass: Wide Neon Volumetric Bloom
+              tCtx.save();
+              tCtx.shadowColor = bladeStyle.color;
+              tCtx.shadowBlur = 30;
+              for (let i = 1; i < pts.length; i++) {
+                const pA = pts[i - 1];
+                const pB = pts[i];
+                const age = (now - pB.time) / 180;
+                const alpha = Math.max(0, 1 - age);
+                const width = Math.max(4, (1 - age) * 20);
 
-        // Outer glow aura
-        tCtx.beginPath();
-        tCtx.moveTo(pA.x, pA.y);
-        tCtx.lineTo(pB.x, pB.y);
-        tCtx.strokeStyle = bladeStyle.glowColor;
-        tCtx.globalAlpha = alpha * 0.65;
-        tCtx.globalAlpha = alpha * 0.8;
-        tCtx.lineWidth = width * 2.2;
-        tCtx.stroke();
-      }
-      tCtx.restore();
+              tCtx.beginPath();
+              tCtx.moveTo(pA.x, pA.y);
+              tCtx.lineTo(pB.x, pB.y);
+              tCtx.strokeStyle = bladeStyle.glowColor;
+              tCtx.globalAlpha = alpha * 0.8;
+              tCtx.lineWidth = width * 2.2;
+              tCtx.stroke();
+            }
+            tCtx.restore();
 
-      // Intermediate vibrant neon core
-      // 2. Pass: Intense Saturated Laser Beam
-      tCtx.save();
-      tCtx.shadowColor = bladeStyle.color;
-      tCtx.shadowBlur = 16;
-      for (let i = 1; i < pts.length; i++) {
-        const pA = pts[i - 1];
-        const pB = pts[i];
-        const age = (now - pB.time) / 180;
-        const alpha = Math.max(0, 1 - age);
-        const width = Math.max(3, (1 - age) * 14);
+              // 2. Pass: Intense Saturated Laser Beam
+              tCtx.save();
+              tCtx.shadowColor = bladeStyle.color;
+              tCtx.shadowBlur = 16;
+              for (let i = 1; i < pts.length; i++) {
+                const pA = pts[i - 1];
+                const pB = pts[i];
+                const age = (now - pB.time) / 180;
+                const alpha = Math.max(0, 1 - age);
+                const width = Math.max(3, (1 - age) * 14);
 
-        tCtx.beginPath();
-        tCtx.moveTo(pA.x, pA.y);
-        tCtx.lineTo(pB.x, pB.y);
-        tCtx.strokeStyle = bladeStyle.color;
-        tCtx.globalAlpha = alpha * 0.95;
-        tCtx.lineWidth = width * 1.2;
-        tCtx.globalAlpha = alpha;
-        tCtx.lineWidth = width;
-        tCtx.stroke();
-      }
-      tCtx.restore();
+              tCtx.beginPath();
+              tCtx.moveTo(pA.x, pA.y);
+              tCtx.lineTo(pB.x, pB.y);
+              tCtx.strokeStyle = bladeStyle.color;
+              tCtx.globalAlpha = alpha;
+              tCtx.lineWidth = width;
+              tCtx.stroke();
+            }
+            tCtx.restore();
 
-      // White-hot blade center
-      // 3. Pass: White-Hot Laser Center
-      for (let i = 1; i < pts.length; i++) {
-        const pA = pts[i - 1];
-        const pB = pts[i];
-        const age = (now - pB.time) / 180;
-        const alpha = Math.max(0, 1 - age);
-        const width = Math.max(1.5, (1 - age) * 5);
+              // 3. Pass: White-Hot Laser Center
+              for (let i = 1; i < pts.length; i++) {
+                const pA = pts[i - 1];
+                const pB = pts[i];
+                const age = (now - pB.time) / 180;
+                const alpha = Math.max(0, 1 - age);
+                const width = Math.max(1.5, (1 - age) * 5);
 
-        tCtx.beginPath();
-        tCtx.moveTo(pA.x, pA.y);
-        tCtx.lineTo(pB.x, pB.y);
-        tCtx.strokeStyle = '#ffffff';
-        tCtx.globalAlpha = alpha * 0.85;
-        tCtx.lineWidth = Math.max(1.5, width * 0.4);
-        tCtx.globalAlpha = alpha * 0.95;
-        tCtx.lineWidth = width;
-        tCtx.stroke();
-      }
-      tCtx.globalAlpha = 1.0;
-    }
+                tCtx.beginPath();
+                tCtx.moveTo(pA.x, pA.y);
+                tCtx.lineTo(pB.x, pB.y);
+                tCtx.strokeStyle = '#ffffff';
+                tCtx.globalAlpha = alpha * 0.95;
+                tCtx.lineWidth = width;
+                tCtx.stroke();
+              }
+            }
 
-    // Draw Floating Hit Score Popups
-    hitTextsRef.current = hitTextsRef.current.filter((ht) => now - ht.time < 800);
-    for (const ht of hitTextsRef.current) {
-      const age = (now - ht.time) / 800;
-      const alpha = Math.max(0, 1 - age);
-      const offsetY = age * 48;
-      tCtx.save();
-      tCtx.font = '900 18px monospace';
-      tCtx.textAlign = 'center';
-      tCtx.shadowColor = ht.color;
-      tCtx.shadowBlur = 14;
-      tCtx.fillStyle = '#ffffff';
-      tCtx.globalAlpha = alpha;
-      tCtx.fillText(ht.text, ht.x, ht.y - offsetY);
-      tCtx.restore();
-    }
-  }
-}
-    };
+            // Draw Floating Hit Score Popups
+            hitTextsRef.current = hitTextsRef.current.filter((ht) => now - ht.time < 800);
+            for (const ht of hitTextsRef.current) {
+              const age = (now - ht.time) / 800;
+              const alpha = Math.max(0, 1 - age);
+              const offsetY = age * 48;
+              tCtx.save();
+              tCtx.font = '900 18px monospace';
+              tCtx.textAlign = 'center';
+              tCtx.shadowColor = ht.color;
+              tCtx.shadowBlur = 14;
+              tCtx.fillStyle = '#ffffff';
+              tCtx.globalAlpha = alpha;
+              tCtx.fillText(ht.text, ht.x, ht.y - offsetY);
+              tCtx.restore();
+            }
+          }
+        }
+};
 
 animId = requestAnimationFrame(loop);
 
-const handleResize = () => {
-  if (!container || !renderer || !camera) return;
-  const w = container.clientWidth;
-  const h = container.clientHeight;
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
-  renderer.setSize(w, h);
+  const handleResize = () => {
+    if (!container || !renderer || !camera) return;
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
 
   if (trailCanvasRef.current) {
     trailCanvasRef.current.width = w;
@@ -637,113 +573,105 @@ return () => {
 };
   }, [bladeStyle, colorTheme, isPaused, spawnFruit]);
 
-// Handle Mouse & Touch Inputs for Blade Swiping
-const handlePointerDown = (e: React.PointerEvent) => {
-  isDraggingRef.current = true;
-  const rect = containerRef.current?.getBoundingClientRect();
-  if (!rect) return;
+  const handlePointerDown = (e: React.PointerEvent) => {
+    isDraggingRef.current = true;
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
 
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
   trailPointsRef.current = [{ x, y, time: performance.now() }];
 };
 
-const handlePointerMove = (e: React.PointerEvent) => {
-  if (!isDraggingRef.current) return;
-  const rect = containerRef.current?.getBoundingClientRect();
-  if (!rect) return;
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDraggingRef.current) return;
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
 
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-  const now = performance.now();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const now = performance.now();
 
-  const pts = trailPointsRef.current;
-  const lastPoint = pts[pts.length - 1];
+    const pts = trailPointsRef.current;
+    const lastPoint = pts[pts.length - 1];
 
-  if (lastPoint) {
-    const dist = Math.hypot(x - lastPoint.x, y - lastPoint.y);
-    if (dist > 8) {
-      if (now - lastWhooshTimeRef.current > 170 && dist > 35) {
-        sound.playWhoosh(Math.min(2.0, dist / 40));
-        lastWhooshTimeRef.current = now;
-      }
+          if (lastPoint) {
+            const dist = Math.hypot(x - lastPoint.x, y - lastPoint.y);
+            if (dist > 8) {
+              if (now - lastWhooshTimeRef.current > 170 && dist > 35) {
+                sound.playWhoosh(Math.min(2.0, dist / 40));
+                lastWhooshTimeRef.current = now;
+              }
 
-      const newPoint = { x, y, time: now };
-      pts.push(newPoint);
-      checkSliceCollision(lastPoint, newPoint);
-    }
+              const newPoint = { x, y, time: now };
+              pts.push(newPoint);
+              checkSliceCollision(lastPoint, newPoint);
+            }
+          }
+    };
+
+    const handlePointerUp = () => {
+      isDraggingRef.current = false;
+    };
+
+  return (
+            <div
+              ref={containerRef}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerLeave={handlePointerUp}
+              style={{
+                boxShadow: `0 0 40px ${bladeStyle.color}33, inset 0 0 30px ${bladeStyle.color}15`,
+                borderColor: `${bladeStyle.color}55`,
+              }}
+              className={
+                className ||
+                "relative w-full h-[460px] sm:h-[520px] lg:h-[560px] rounded-3xl overflow-hidden bg-gradient-to-b from-[#14062c]/80 via-[#0a021c]/95 to-black border select-none touch-none cursor-crosshair transition-all duration-300"
+              }
+            >
+              {/* Cyber Corner Brackets */}
+              <div
+                style={{ borderColor: bladeStyle.color }}
+                className="absolute top-3 left-3 w-5 h-5 border-t-2 border-l-2 pointer-events-none opacity-90 z-20 shadow-[0_0_8px_currentColor]"
+              />
+              <div
+                style={{ borderColor: bladeStyle.color }}
+                className="absolute top-3 right-3 w-5 h-5 border-t-2 border-r-2 pointer-events-none opacity-90 z-20 shadow-[0_0_8px_currentColor]"
+              />
+              <div
+                style={{ borderColor: bladeStyle.color }}
+                className="absolute bottom-3 left-3 w-5 h-5 border-b-2 border-l-2 pointer-events-none opacity-90 z-20 shadow-[0_0_8px_currentColor]"
+              />
+              <div
+                style={{ borderColor: bladeStyle.color }}
+                className="absolute bottom-3 right-3 w-5 h-5 border-b-2 border-r-2 pointer-events-none opacity-90 z-20 shadow-[0_0_8px_currentColor]"
+              />
+
+              {/* 2D Blade Glow Trail Overlay Canvas */}
+              <canvas
+                ref={trailCanvasRef}
+                className="absolute inset-0 pointer-events-none z-10"
+              />
+
+              {/* Dynamic Background Aura Glow driven by active theme */}
+              <div
+                style={{
+                  background: `radial-gradient(circle at 50% 50%, ${bladeStyle.color}35 0%, transparent 70%)`,
+                }}
+                className="absolute inset-0 pointer-events-none transition-all duration-700 blur-2xl"
+              />
+
+              {/* Live Slice Instructions Callout */}
+              <div className="absolute bottom-5 left-1/2 -translate-x-1/2 pointer-events-none z-20 flex items-center gap-2.5 bg-black/85 backdrop-blur-md px-5 py-2.5 rounded-full border border-purple-500/40 text-xs font-semibold text-zinc-200 shadow-[0_0_25px_rgba(0,0,0,0.85)]">
+                <span
+                  style={{ backgroundColor: bladeStyle.color }}
+                  className="w-2.5 h-2.5 rounded-full animate-ping"
+                />
+                <span className="tracking-wider uppercase font-mono text-[11px] sm:text-xs">
+                  SWIPE OR DRAG TO CLEAVE FLYING FRUITS!
+                </span>
+              </div>
+            </div>
+          );
   }
-};
-
-const handlePointerUp = () => {
-  isDraggingRef.current = false;
-};
-
-return (
-  <div
-    ref={containerRef}
-    onPointerDown={handlePointerDown}
-    onPointerMove={handlePointerMove}
-    onPointerUp={handlePointerUp}
-    onPointerLeave={handlePointerUp}
-    style={{
-      boxShadow: `0 0 40px ${bladeStyle.color}33, inset 0 0 30px ${bladeStyle.color}15`,
-      borderColor: `${bladeStyle.color}55`,
-    }}
-    className={
-      className ||
-      "relative w-full h-[460px] sm:h-[520px] lg:h-[580px] xl:h-[620px] rounded-3xl overflow-hidden bg-gradient-to-b from-purple-950/30 via-zinc-950/90 to-black border border-purple-500/30 shadow-[0_0_50px_rgba(139,92,246,0.15)] select-none touch-none cursor-crosshair"
-        "relative w-full h-[460px] sm:h-[520px] lg:h-[560px] rounded-3xl overflow-hidden bg-gradient-to-b from-[#14062c]/80 via-[#0a021c]/95 to-black border select-none touch-none cursor-crosshair transition-all duration-300"
-      }
-    >
-  {/* Cyber Corner Brackets */ }
-  < div
-style = {{ borderColor: bladeStyle.color }}
-className = "absolute top-3 left-3 w-4 h-4 border-t-2 border-l-2 pointer-events-none opacity-80 z-20"
-className = "absolute top-3 left-3 w-5 h-5 border-t-2 border-l-2 pointer-events-none opacity-90 z-20 shadow-[0_0_8px_currentColor]"
-  />
-      <div
-        style={{ borderColor: bladeStyle.color }}
-        className="absolute top-3 right-3 w-4 h-4 border-t-2 border-r-2 pointer-events-none opacity-80 z-20"
-        className="absolute top-3 right-3 w-5 h-5 border-t-2 border-r-2 pointer-events-none opacity-90 z-20 shadow-[0_0_8px_currentColor]"
-      />
-      <div
-        style={{ borderColor: bladeStyle.color }}
-        className="absolute bottom-3 left-3 w-4 h-4 border-b-2 border-l-2 pointer-events-none opacity-80 z-20"
-        className="absolute bottom-3 left-3 w-5 h-5 border-b-2 border-l-2 pointer-events-none opacity-90 z-20 shadow-[0_0_8px_currentColor]"
-      />
-      <div
-        style={{ borderColor: bladeStyle.color }}
-        className="absolute bottom-3 right-3 w-4 h-4 border-b-2 border-r-2 pointer-events-none opacity-80 z-20"
-        className="absolute bottom-3 right-3 w-5 h-5 border-b-2 border-r-2 pointer-events-none opacity-90 z-20 shadow-[0_0_8px_currentColor]"
-      />
-
-{/* 2D Blade Glow Trail Overlay Canvas */ }
-<canvas
-  ref={trailCanvasRef}
-  className="absolute inset-0 pointer-events-none z-10"
-/>
-
-{/* Dynamic Background Aura Glow driven by active theme */ }
-<div
-  style={{
-    background: `radial-gradient(circle at 50% 50%, ${bladeStyle.color}25 0%, transparent 70%)`,
-    background: `radial-gradient(circle at 50% 50%, ${bladeStyle.color}35 0%, transparent 70%)`,
-  }}
-  className="absolute inset-0 pointer-events-none transition-all duration-700 blur-2xl"
-/>
-
-{/* Live Slice Instructions Callout */ }
-<div className="absolute bottom-5 left-1/2 -translate-x-1/2 pointer-events-none z-20 flex items-center gap-2.5 bg-black/85 backdrop-blur-md px-5 py-2.5 rounded-full border border-purple-500/40 text-xs font-semibold text-zinc-200 shadow-[0_0_20px_rgba(0,0,0,0.8)]">
-  <div className="absolute bottom-5 left-1/2 -translate-x-1/2 pointer-events-none z-20 flex items-center gap-2.5 bg-black/85 backdrop-blur-md px-5 py-2.5 rounded-full border border-purple-500/40 text-xs font-semibold text-zinc-200 shadow-[0_0_25px_rgba(0,0,0,0.85)]">
-    <span
-      style={{ backgroundColor: bladeStyle.color }}
-      className="w-2.5 h-2.5 rounded-full animate-ping"
-    />
-    <span className="tracking-wider uppercase font-mono text-[11px] sm:text-xs">
-      SWIPE OR DRAG TO CLEAVE FLYING FRUITS!
-    </span>
-  </div>
-</div>
-  );
-}
