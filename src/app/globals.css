@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #070314;
+  --background: #060212;
   --foreground: #f4f4f5;
 }
 
@@ -16,14 +16,64 @@ body {
   background: var(--background);
   color: var(--foreground);
   overflow-x: hidden;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
-/* Custom Gaming Grid */
+/* Custom Cyber Gaming Grid */
 .gaming-grid {
   background-image: 
-    linear-gradient(to right, rgba(168, 85, 247, 0.08) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(168, 85, 247, 0.08) 1px, transparent 1px);
+    linear-gradient(to right, rgba(168, 85, 247, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(168, 85, 247, 0.07) 1px, transparent 1px);
   background-size: 32px 32px;
+}
+
+/* Fine tech dot matrix */
+.dot-matrix {
+  background-image: radial-gradient(rgba(147, 51, 234, 0.15) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+/* Cyber card glassmorphism */
+.cyber-card {
+  background: linear-gradient(135deg, rgba(20, 8, 45, 0.75) 0%, rgba(10, 3, 24, 0.85) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+}
+
+.cyber-card-active {
+  background: linear-gradient(135deg, rgba(35, 14, 75, 0.85) 0%, rgba(16, 5, 38, 0.95) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 240, 255, 0.4);
+  box-shadow: 0 0 25px rgba(0, 240, 255, 0.15), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Neon Glow utilities */
+.glow-cyan {
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.35);
+}
+
+.glow-magenta {
+  box-shadow: 0 0 20px rgba(255, 0, 127, 0.35);
+}
+
+.glow-amber {
+  box-shadow: 0 0 20px rgba(255, 170, 0, 0.35);
+}
+
+.glow-purple {
+  box-shadow: 0 0 25px rgba(168, 85, 247, 0.25);
+}
+
+/* Scanline subtle overlay */
+.scanlines {
+  background: linear-gradient(
+    rgba(18, 16, 26, 0) 50%, 
+    rgba(0, 0, 0, 0.25) 50%
+  );
+  background-size: 100% 4px;
 }
 
 /* Custom sleek scrollbars */
@@ -33,15 +83,24 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #09031a;
+  background: #080216;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #3b1d6e;
+  background: #491a85;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #7c3aed;
+  background: #8b5cf6;
 }
 
+/* Animated Shimmer */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-shimmer {
+  animation: shimmer 2.5s infinite;
+}
