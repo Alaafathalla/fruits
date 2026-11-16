@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { GameMode } from '@/types';
+import { GameMode, GamePace } from '@/types';
 import {
   Trophy,
   Flame,
@@ -15,6 +15,7 @@ import {
   Minimize2,
   HelpCircle,
   Zap,
+  Gauge,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -23,12 +24,14 @@ interface HeaderProps {
   combo?: number;
   frenzyLabel?: string;
   mode?: GameMode;
+  pace?: GamePace;
   timeLeft?: number;
   highScore?: number;
   isPaused?: boolean;
   isMuted?: boolean;
   isFullscreen?: boolean;
   onToggleMode?: (mode: GameMode) => void;
+  onTogglePace?: (pace: GamePace) => void;
   onTogglePause?: () => void;
   onRestart?: () => void;
   onToggleSound?: () => void;
@@ -40,14 +43,16 @@ export default function Header({
   score = 0,
   scorePenalty = null,
   combo = 0,
-  frenzyLabel = 'Warmup (1x)',
+  frenzyLabel = 'Warmup (Slow & Calm)',
   mode = 'arcade',
+  pace = 'relaxed',
   timeLeft = 60,
   highScore = 0,
   isPaused = false,
   isMuted = false,
   isFullscreen = false,
   onToggleMode,
+  onTogglePace,
   onTogglePause,
   onRestart,
   onToggleSound,
@@ -74,12 +79,15 @@ export default function Header({
                 FRUIT SLASH 3D
               </span>
               <span className="text-[10px] font-extrabold tracking-widest uppercase bg-gradient-to-r from-fuchsia-500/20 to-purple-500/20 text-fuchsia-300 border border-fuchsia-500/30 px-2 py-0.5 rounded-md font-mono shadow-[0_0_10px_rgba(217,70,239,0.2)]">
-                PRO STUDIO
+                PRO 3D STUDIO
               </span>
             </div>
             <div className="flex items-center gap-2 mt-0.5">
               <span className="text-[10px] font-mono uppercase font-bold text-cyan-400">
                 {mode} MODE
+              </span>
+              <span className="text-[9px] font-mono uppercase font-bold px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                PACE: {pace.toUpperCase()}
               </span>
               {isPaused && (
                 <span className="text-[9px] font-mono uppercase font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
@@ -94,11 +102,10 @@ export default function Header({
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           {/* Score Pill */}
           <div
-            className={`flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-xl border transition-all duration-300 ${
-              scorePenalty
-                ? 'bg-rose-950/80 border-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.6)] animate-pulse'
-                : 'bg-black/55 border-purple-500/30 shadow-inner'
-            }`}
+            className={`flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-xl border transition-all duration-300 ${scorePenalty
+              ? 'bg-rose-950/80 border-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.6)] animate-pulse'
+              : 'bg-black/55 border-purple-500/30 shadow-inner'
+              }`}
           >
             <Trophy className={`w-3.5 h-3.5 ${scorePenalty ? 'text-rose-400' : 'text-amber-400'}`} />
             <div>
@@ -107,9 +114,8 @@ export default function Header({
               </span>
               <div className="flex items-center gap-1">
                 <span
-                  className={`text-sm sm:text-base font-black font-mono tracking-tight transition-colors ${
-                    scorePenalty ? 'text-rose-400' : 'text-white'
-                  }`}
+                  className={`text-sm sm:text-base font-black font-mono tracking-tight transition-colors ${scorePenalty ? 'text-rose-400' : 'text-white'
+                    }`}
                 >
                   {score}
                 </span>
@@ -130,9 +136,8 @@ export default function Header({
                 COMBO
               </span>
               <span
-                className={`text-sm sm:text-base font-black font-mono tracking-tight ${
-                  combo > 1 ? 'text-orange-400' : 'text-zinc-300'
-                }`}
+                className={`text-sm sm:text-base font-black font-mono tracking-tight ${combo > 1 ? 'text-orange-400' : 'text-zinc-300'
+                  }`}
               >
                 {combo > 1 ? `x${combo}!` : 'x1'}
               </span>
@@ -155,18 +160,16 @@ export default function Header({
           {/* Timer / High Score */}
           <div className="flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-xl bg-black/55 border border-purple-500/30 shadow-inner">
             <Timer
-              className={`w-3.5 h-3.5 ${
-                mode === 'arcade' && timeLeft <= 10 ? 'text-rose-400 animate-pulse' : 'text-cyan-400'
-              }`}
+              className={`w-3.5 h-3.5 ${mode === 'arcade' && timeLeft <= 10 ? 'text-rose-400 animate-pulse' : 'text-cyan-400'
+                }`}
             />
             <div>
               <span className="text-[8px] text-zinc-400 block -mb-1 font-mono uppercase font-bold tracking-wider">
                 {mode === 'arcade' ? 'TIMER' : 'RECORD'}
               </span>
               <span
-                className={`text-sm sm:text-base font-black font-mono tracking-tight ${
-                  mode === 'arcade' && timeLeft <= 10 ? 'text-rose-400 animate-pulse' : 'text-white'
-                }`}
+                className={`text-sm sm:text-base font-black font-mono tracking-tight ${mode === 'arcade' && timeLeft <= 10 ? 'text-rose-400 animate-pulse' : 'text-white'
+                  }`}
               >
                 {mode === 'arcade' ? `${timeLeft}s` : highScore}
               </span>
@@ -175,95 +178,136 @@ export default function Header({
         </div>
 
         {/* Right: Mode Switcher & Controls */}
-        <div className="flex items-center gap-2">
-          {/* Zen / Arcade Mode Switch */}
-          {onToggleMode && (
-            <div className="flex items-center p-1 rounded-xl bg-black/60 border border-purple-500/30 shadow-inner">
-              <button
-                onClick={() => onToggleMode('zen')}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold font-mono tracking-wide transition-all ${
-                  mode === 'zen'
+          {/* Right: Pace Selector, Mode Switcher & Controls */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Fruit Speed / Pace Selector */}
+            {onTogglePace && (
+              <div className="flex items-center p-1 rounded-xl bg-black/60 border border-purple-500/30 shadow-inner">
+                <span className="text-[10px] font-mono font-bold text-zinc-400 px-1.5 hidden xl:inline flex items-center gap-1">
+                  <Gauge className="w-3 h-3 text-cyan-400 inline" />
+                  <span>PACE:</span>
+                </span>
+                <button
+                  onClick={() => onTogglePace('slow')}
+                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold font-mono tracking-wide transition-all ${pace === 'slow'
+                    ? 'bg-emerald-500 text-black font-black shadow-[0_0_10px_rgba(16,185,129,0.5)]'
+                    : 'text-zinc-400 hover:text-white'
+                    }`}
+                  title="Zen Slow (0.68x) - Cinematic slow motion float"
+                >
+                  🐢 SLOW
+                </button>
+                <button
+                  onClick={() => onTogglePace('relaxed')}
+                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold font-mono tracking-wide transition-all ${pace === 'relaxed'
+                    ? 'bg-cyan-500 text-black font-black shadow-[0_0_10px_rgba(6,182,212,0.5)]'
+                    : 'text-zinc-400 hover:text-white'
+                    }`}
+                  title="Relaxed (0.85x) - Smooth, calm, and readable"
+                >
+                  🌊 RELAXED
+                </button>
+                <button
+                  onClick={() => onTogglePace('standard')}
+                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold font-mono tracking-wide transition-all ${pace === 'standard'
+                    ? 'bg-amber-500 text-black font-black shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                    : 'text-zinc-400 hover:text-white'
+                    }`}
+                  title="Standard (1.08x) - Classic arcade speed"
+                >
+                  ⚡ FAST
+                </button>
+              </div>
+            )}
+
+            {/* Zen / Arcade Mode Switch */}
+            {onToggleMode && (
+              <div className="flex items-center p-1 rounded-xl bg-black/60 border border-purple-500/30 shadow-inner">
+                <button
+                  onClick={() => onToggleMode('zen')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold font-mono tracking-wide transition-all ${mode === 'zen'
                     ? 'bg-fuchsia-600 text-white shadow-[0_0_10px_rgba(217,70,239,0.5)]'
                     : 'text-zinc-400 hover:text-white'
-                }`}
-              >
-                ZEN
-              </button>
-              <button
-                onClick={() => onToggleMode('arcade')}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold font-mono tracking-wide transition-all ${
-                  mode === 'arcade'
+                    }`}
+                >
+                  ZEN
+                </button>
+                <button
+                  onClick={() => onToggleMode('arcade')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold font-mono tracking-wide transition-all ${mode === 'arcade'
                     ? 'bg-cyan-600 text-white shadow-[0_0_10px_rgba(6,182,212,0.5)]'
                     : 'text-zinc-400 hover:text-white'
-                }`}
+                    }`}
+                >
+                  ARCADE
+                </button>
+              </div>
+            )}
+
+            {/* Pause Button */}
+            {onTogglePause && (
+              <button
+                onClick={onTogglePause}
+                className="p-2 rounded-xl bg-black/55 hover:bg-purple-950/60 border border-purple-500/30 text-zinc-300 hover:text-white transition shadow-sm"
+                title={isPaused ? 'Resume Game' : 'Pause Game'}
               >
-                ARCADE
+                {isPaused ? <Play className="w-3.5 h-3.5 text-emerald-400" /> : <Pause className="w-3.5 h-3.5 text-zinc-400" />}
               </button>
+            )}
+
+            {/* Restart Button */}
+            {onRestart && (
+              <button
+                onClick={onRestart}
+                className="p-2 rounded-xl bg-black/55 hover:bg-purple-950/60 border border-purple-500/30 text-zinc-300 hover:text-white transition shadow-sm"
+                title="Restart Round"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
+              </button>
+            )}
+
+            {/* Audio Mute/Unmute */}
+            {onToggleSound && (
+              <button
+                onClick={onToggleSound}
+                className="p-2 rounded-xl bg-black/55 hover:bg-purple-950/60 border border-purple-500/30 text-zinc-300 hover:text-white transition shadow-sm"
+                title={isMuted ? 'Unmute Audio' : 'Mute Audio'}
+              >
+                {isMuted ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5 text-cyan-400" />}
+              </button>
+            )}
+
+            {/* Fullscreen Button */}
+            {onToggleFullscreen && (
+              <button
+                onClick={onToggleFullscreen}
+                className="hidden sm:flex p-2 rounded-xl bg-black/55 hover:bg-purple-950/60 border border-purple-500/30 text-zinc-300 hover:text-white transition shadow-sm"
+                title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+              >
+                {isFullscreen ? <Minimize2 className="w-3.5 h-3.5 text-amber-400" /> : <Maximize2 className="w-3.5 h-3.5 text-cyan-400" />}
+              </button>
+            )}
+
+            {/* Help Button */}
+            {onOpenHelp && (
+              <button
+                onClick={onOpenHelp}
+                className="p-2 rounded-xl bg-purple-950/40 hover:bg-purple-900/60 border border-purple-500/30 text-cyan-400 hover:text-white transition shadow-sm"
+                title="How to Play & Combos"
+              >
+                <HelpCircle className="w-3.5 h-3.5 text-cyan-400" />
+              </button>
+            )}
+
+            {/* 60 FPS Badge */}
+            <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-purple-950/40 border border-purple-500/30 text-xs">
+              <div className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-purple-950/40 border border-purple-500/30 text-xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+                <span className="font-mono text-cyan-300 font-bold text-[10px]">WEBGL 3D</span>
+              </div>
             </div>
-          )}
-
-          {/* Pause Button */}
-          {onTogglePause && (
-            <button
-              onClick={onTogglePause}
-              className="p-2 rounded-xl bg-black/55 hover:bg-purple-950/60 border border-purple-500/30 text-zinc-300 hover:text-white transition shadow-sm"
-              title={isPaused ? 'Resume Game' : 'Pause Game'}
-            >
-              {isPaused ? <Play className="w-3.5 h-3.5 text-emerald-400" /> : <Pause className="w-3.5 h-3.5 text-zinc-400" />}
-            </button>
-          )}
-
-          {/* Restart Button */}
-          {onRestart && (
-            <button
-              onClick={onRestart}
-              className="p-2 rounded-xl bg-black/55 hover:bg-purple-950/60 border border-purple-500/30 text-zinc-300 hover:text-white transition shadow-sm"
-              title="Restart Round"
-            >
-              <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
-            </button>
-          )}
-
-          {/* Audio Mute/Unmute */}
-          {onToggleSound && (
-            <button
-              onClick={onToggleSound}
-              className="p-2 rounded-xl bg-black/55 hover:bg-purple-950/60 border border-purple-500/30 text-zinc-300 hover:text-white transition shadow-sm"
-              title={isMuted ? 'Unmute Audio' : 'Mute Audio'}
-            >
-              {isMuted ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5 text-cyan-400" />}
-            </button>
-          )}
-
-          {/* Fullscreen Button */}
-          {onToggleFullscreen && (
-            <button
-              onClick={onToggleFullscreen}
-              className="hidden sm:flex p-2 rounded-xl bg-black/55 hover:bg-purple-950/60 border border-purple-500/30 text-zinc-300 hover:text-white transition shadow-sm"
-              title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-            >
-              {isFullscreen ? <Minimize2 className="w-3.5 h-3.5 text-amber-400" /> : <Maximize2 className="w-3.5 h-3.5 text-cyan-400" />}
-            </button>
-          )}
-
-          {/* Help Button */}
-          {onOpenHelp && (
-            <button
-              onClick={onOpenHelp}
-              className="p-2 rounded-xl bg-purple-950/40 hover:bg-purple-900/60 border border-purple-500/30 text-cyan-400 hover:text-white transition shadow-sm"
-              title="How to Play & Combos"
-            >
-              <HelpCircle className="w-3.5 h-3.5 text-cyan-400" />
-            </button>
-          )}
-
-          {/* 60 FPS Badge */}
-          <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-purple-950/40 border border-purple-500/30 text-xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
-            <span className="font-mono text-cyan-300 font-bold text-[10px]">60 FPS</span>
           </div>
         </div>
-      </div>
-    </header>
-  );
+      </header>
+        );
 }

@@ -1,4 +1,12 @@
-export type FruitKind = 'watermelon' | 'orange' | 'apple' | 'lemon' | 'kiwi' | 'dragonfruit' | 'bomb';
+export type FruitKind =
+  | 'watermelon'
+  | 'orange'
+  | 'apple'
+  | 'lemon'
+  | 'kiwi'
+  | 'dragonfruit'
+  | 'strawberry'
+  | 'bomb';
 
 export interface BladeStyle {
   id: string;
@@ -10,6 +18,8 @@ export interface BladeStyle {
 }
 
 export type GameMode = 'zen' | 'arcade';
+
+export type GamePace = 'slow' | 'relaxed' | 'standard';
 
 export interface ColorTheme {
   id: string;

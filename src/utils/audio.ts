@@ -64,7 +64,16 @@ class SoundEngine {
 
     try {
       const now = ctx.currentTime;
-      const baseFreq = fruitType === 'watermelon' ? 180 : fruitType === 'dragonfruit' ? 260 : fruitType === 'apple' ? 320 : 240;
+      const baseFreq =
+        fruitType === 'watermelon'
+          ? 180
+          : fruitType === 'dragonfruit'
+          ? 260
+          : fruitType === 'strawberry'
+          ? 290
+          : fruitType === 'apple'
+          ? 320
+          : 240;
 
       // Punchy tone
       const osc = ctx.createOscillator();

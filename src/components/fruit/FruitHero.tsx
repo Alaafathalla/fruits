@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Header from '@/components/common/Header';
 import FruitCuttingCanvas from './FruitCuttingCanvas';
-import { FruitKind, BladeStyle, GameMode, ColorTheme, JuiceRecipe, ScoreTier } from '@/types';
+import { FruitKind, BladeStyle, GameMode, GamePace, ColorTheme, JuiceRecipe, ScoreTier } from '@/types';
 import { sound } from '@/utils/audio';
 import confetti from 'canvas-confetti';
 import {
@@ -14,9 +14,6 @@ import {
   Sparkles,
   Volume2,
   VolumeX,
-  Palette,
-  Sliders,
-  CheckCircle,
   Zap,
   Play,
   Pause,
@@ -24,10 +21,6 @@ import {
   Minimize2,
   HelpCircle,
   X,
-  Award,
-  Swords,
-  Layers,
-  ChevronRight,
   TrendingUp,
 } from 'lucide-react';
 
@@ -146,17 +139,6 @@ const COLOR_THEMES: ColorTheme[] = [
   },
 ];
 
-const QUICK_COLORS = [
-  { name: 'Cyan', hex: '#00F0FF' },
-  { name: 'Magenta', hex: '#FF007F' },
-  { name: 'Amber', hex: '#FFAA00' },
-  { name: 'Lime', hex: '#39FF14' },
-  { name: 'Volt', hex: '#FACC15' },
-  { name: 'Ruby', hex: '#EF4444' },
-  { name: 'Purple', hex: '#B026FF' },
-  { name: 'Frost', hex: '#38BDF8' },
-];
-
 const SCORE_TIERS: ScoreTier[] = [
   { rank: 1, title: 'Novice Slicer', minScore: 0, maxScore: 200, badgeColor: '#38bdf8', icon: '🗡️' },
   { rank: 2, title: 'Juice Hunter', minScore: 200, maxScore: 500, badgeColor: '#4ade80', icon: '🏹' },
@@ -180,6 +162,16 @@ const JUICE_RECIPES: SmoothieRecipeExtended[] = [
     accentGradient: 'from-fuchsia-500 to-emerald-500',
     icon: '🐉',
     rewardPts: 120,
+  },
+  {
+    id: 'ruby-berry-blast',
+    name: 'Ruby Berry Overdrive',
+    tagline: 'Sun-ripened 3D strawberry & crisp apple velvet crush',
+    requiredFruits: { strawberry: 3, apple: 3 },
+    color: '#ff2a6d',
+    accentGradient: 'from-pink-500 to-rose-600',
+    icon: '🍓',
+    rewardPts: 115,
   },
   {
     id: 'crimson-splash',
@@ -219,6 +211,7 @@ export default function FruitHero() {
   const [combo, setCombo] = useState<number>(0);
   const [maxCombo, setMaxCombo] = useState<number>(0);
   const [mode, setMode] = useState<GameMode>('arcade');
+  const [gamePace, setGamePace] = useState<GamePace>('relaxed');
   const [timeLeft, setTimeLeft] = useState<number>(60);
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [isGameOver, setIsGameOver] = useState<boolean>(false);
@@ -235,7 +228,7 @@ export default function FruitHero() {
 
   // Difficulty & Frenzy state
   const [frenzyLevel, setFrenzyLevel] = useState<number>(1);
-  const [frenzyLabel, setFrenzyLabel] = useState<string>('Warmup (1x)');
+  const [frenzyLabel, setFrenzyLabel] = useState<string>('Warmup (Slow & Calm)');
 
   // Rank Notification State
   const [rankUpBanner, setRankUpBanner] = useState<string | null>(null);
@@ -249,6 +242,7 @@ export default function FruitHero() {
     lemon: 0,
     kiwi: 0,
     dragonfruit: 0,
+    strawberry: 0,
     bomb: 0,
   });
 
@@ -275,7 +269,8 @@ export default function FruitHero() {
     try {
       const saved = localStorage.getItem('fruit_slash_highscore');
       if (saved) {
-        setHighScore(parseInt(saved, 10));
+        const parsed = Number(saved);
+      if (Number.isFinite(parsed) && parsed >= 0) setHighScore(parsed);
       }
     } catch {
       // LocalStorage might be disabled
@@ -340,9 +335,11 @@ export default function FruitHero() {
         ? 25
         : kind === 'watermelon'
           ? 20
-          : kind === 'orange' || kind === 'apple'
-            ? 15
-            : 12;
+          : kind === 'strawberry'
+            ? 18
+            : kind === 'orange' || kind === 'apple'
+              ? 15
+              : 12;
 
     const comboMultiplier = Math.max(1, currentCombo);
     const earned = basePoints * comboMultiplier;
@@ -389,10 +386,12 @@ export default function FruitHero() {
     sound.playClick();
     setScore(0);
     setCombo(0);
+    setMaxCombo(0);
     setTimeLeft(60);
     setIsPaused(false);
     setIsGameOver(false);
     prevRankRef.current = 1;
+    setRankUpBanner(null);
     setGameResetKey((prev) => prev + 1);
     setSlicedCounts({
       watermelon: 0,
@@ -401,6 +400,7 @@ export default function FruitHero() {
       lemon: 0,
       kiwi: 0,
       dragonfruit: 0,
+      strawberry: 0,
       bomb: 0,
     });
   };
@@ -445,13 +445,17 @@ export default function FruitHero() {
     sound.playClick();
     if (!arenaContainerRef.current) return;
     if (!document.fullscreenElement) {
-      arenaContainerRef.current.requestFullscreen().catch(() => { });
-      setIsFullscreen(true);
+      arenaContainerRef.current.requestFullscreen().catch(() => setIsFullscreen(false));
     } else {
-      document.exitFullscreen().catch(() => { });
-      setIsFullscreen(false);
+      document.exitFullscreen().catch(() => setIsFullscreen(true));
     }
   };
+
+  useEffect(() => {
+    const syncFullscreen = () => setIsFullscreen(document.fullscreenElement === arenaContainerRef.current);
+    document.addEventListener('fullscreenchange', syncFullscreen);
+    return () => document.removeEventListener('fullscreenchange', syncFullscreen);
+  }, []);
 
   // Custom Color Handler
   const handleCustomColorChange = (hex: string) => {
@@ -497,6 +501,7 @@ export default function FruitHero() {
         combo={combo}
         frenzyLabel={frenzyLabel}
         mode={mode}
+        pace={gamePace}
         timeLeft={timeLeft}
         highScore={highScore}
         isPaused={isPaused}
@@ -508,6 +513,10 @@ export default function FruitHero() {
           if (newMode === 'arcade') handleRestart();
           else setIsGameOver(false);
         }}
+        onTogglePace={(newPace) => {
+          sound.playClick();
+          setGamePace(newPace);
+        }}
         onTogglePause={() => {
           sound.playClick();
           setIsPaused(!isPaused);
@@ -518,7 +527,7 @@ export default function FruitHero() {
         onOpenHelp={() => setShowHelpModal(true)}
       />
 
-      <section className="relative w-full min-h-[calc(100vh-80px)] overflow-hidden bg-[#060212] text-white flex flex-col justify-between py-4 sm:py-6">
+      <section className="relative w-full min-h-[calc(100dvh-72px)] lg:h-[calc(100dvh-72px)] overflow-visible lg:overflow-hidden bg-[#060212] text-white flex flex-col">
         {/* Background Animated Dynamic Atmosphere */}
         <div className="absolute inset-0 pointer-events-none z-0">
           <div className="absolute inset-0 gaming-grid opacity-30" />
@@ -533,363 +542,148 @@ export default function FruitHero() {
           />
         </div>
 
-        <div className="relative z-10 max-w-[1680px] w-full mx-auto px-4 sm:px-6 lg:px-8 flex flex-col gap-5">
-          {/* 2. PROGRESS TO SCORE (SLICER RANK PROGRESSION BAR) */}
-          <div className="relative px-5 py-3 rounded-2xl cyber-card flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[0_0_25px_rgba(168,85,247,0.12)]">
+        <div className="relative z-10 w-full h-full flex flex-col gap-0 lg:overflow-hidden">
+          {/* RANK PROGRESS BAR — full width top strip */}
+          <div className="relative px-4 py-2 border-b border-purple-500/20 bg-black/40 backdrop-blur-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0">
             {rankUpBanner && (
               <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-5 py-1.5 rounded-full bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-amber-400 text-black text-xs font-black font-mono tracking-widest uppercase shadow-[0_0_25px_rgba(0,240,255,0.9)] animate-bounce z-30">
                 {rankUpBanner}
               </div>
             )}
-
             <div className="flex items-center gap-3 shrink-0">
-              <span className="text-2xl filter drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">{currentTier.icon}</span>
+              <span className="text-xl filter drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">{currentTier.icon}</span>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs sm:text-sm font-black text-white tracking-wide">
-                    {currentTier.title}
-                  </span>
-                  <span
-                    style={{ backgroundColor: `${currentTier.badgeColor}22`, borderColor: `${currentTier.badgeColor}55`, color: currentTier.badgeColor }}
-                    className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border"
-                  >
+                  <span className="text-xs font-black text-white tracking-wide">{currentTier.title}</span>
+                  <span style={{ backgroundColor: `${currentTier.badgeColor}22`, borderColor: `${currentTier.badgeColor}55`, color: currentTier.badgeColor }} className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border">
                     RANK {currentTier.rank}
                   </span>
                 </div>
-                <span className="text-[10px] font-mono text-zinc-400">
-                  Tier {currentTier.rank} of {SCORE_TIERS.length} Progression
-                </span>
               </div>
             </div>
-
-            <div className="flex-1 max-w-xl mx-2 flex flex-col gap-1.5">
+            <div className="flex-1 max-w-xl mx-2 flex flex-col gap-1">
               <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400">
-                <span className="flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3 text-cyan-400" />
-                  <span>Next Rank Experience:</span>
-                </span>
-                <span className="font-bold text-cyan-300 font-mono">
-                  {progressPct}% ({score} pts)
-                </span>
+                <span className="flex items-center gap-1"><TrendingUp className="w-3 h-3 text-cyan-400" /><span>Progress</span></span>
+                <span className="font-bold text-cyan-300">{progressPct}% · {score} pts</span>
               </div>
-              <div className="w-full h-2.5 rounded-full bg-black/60 border border-purple-500/20 overflow-hidden relative shadow-inner">
-                <div
-                  style={{ width: `${progressPct}%`, backgroundColor: currentTier.badgeColor }}
-                  className="h-full rounded-full transition-all duration-500 shadow-[0_0_12px_currentColor]"
-                />
+              <div className="w-full h-2 rounded-full bg-black/60 border border-purple-500/20 overflow-hidden">
+                <div style={{ width: `${progressPct}%`, backgroundColor: currentTier.badgeColor }} className="h-full rounded-full transition-all duration-500 shadow-[0_0_12px_currentColor]" />
               </div>
             </div>
-
-            <div className="text-right shrink-0">
-              <span className="text-[10px] font-mono text-zinc-400 block">
-                {nextTier ? `Goal: ${nextTier.title}` : 'MAX LEVEL ACHIEVED'}
-              </span>
+            <div className="text-right shrink-0 hidden sm:block">
               <span className="text-xs font-mono font-black text-amber-300">
-                {nextTier ? `${ptsToNext} PTS TO UNLOCK` : '👑 FRUIT DEITY RANK'}
+                {nextTier ? `${ptsToNext} PTS TO ${nextTier.title.toUpperCase()}` : '👑 MAX RANK'}
               </span>
             </div>
           </div>
 
-          {/* 3. MAIN GAME STAGE: ARENA + COLOR & BLADE DECK DIRECTLY UNDER THAT */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-            {/* CENTER & LEFT: 3D ARENA + COLOR DECK DIRECTLY UNDER */}
-            <div className="lg:col-span-8 xl:col-span-9 flex flex-col gap-5">
-              {/* THE 3D FRUIT CUTTING ARENA */}
+          {/* MAIN AREA — arena left, sidebar right */}
+          <div className="flex flex-col lg:flex-row flex-1 min-h-0 lg:overflow-hidden">
+
+            {/* LEFT: 3D ARENA fills all remaining height */}
+            <div className="flex-1 min-w-0 relative h-[60dvh] min-h-[350px] lg:h-auto">
               <div
                 ref={arenaContainerRef}
-                className="relative rounded-3xl overflow-hidden border border-purple-500/40 bg-black/80 shadow-[0_0_50px_rgba(168,85,247,0.2)] group"
+                className="relative w-full h-full overflow-hidden bg-black/80"
               >
                 {/* Bomb Hazard Flash */}
                 {bombFlash && (
-                  <div className="absolute inset-0 z-30 bg-rose-500/40 rounded-3xl pointer-events-none animate-ping" />
+                  <div className="absolute inset-0 z-30 bg-rose-500/40 pointer-events-none animate-ping" />
                 )}
 
-                {/* Arena In-Canvas Controls Overlay Bar */}
-                  <div className="absolute top-4 right-4 z-20 pointer-events-none">
-                    <div className="pointer-events-auto flex items-center gap-2">
-                      <button
-                        onClick={() => setShowHelpModal(true)}
-                        className="p-2 rounded-xl bg-black/75 backdrop-blur-md hover:bg-purple-950/70 border border-purple-500/30 text-zinc-300 hover:text-white transition shadow-lg"
-                        title="How to Play"
-                      >
-                        <HelpCircle className="w-4 h-4 text-cyan-400" />
-                      </button>
-
-                      <button
-                        onClick={toggleFullscreen}
-                        className="p-2 rounded-xl bg-black/75 backdrop-blur-md hover:bg-purple-950/70 border border-purple-500/30 text-zinc-300 hover:text-white transition shadow-lg"
-                        title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Arena'}
-                      >
-                        {isFullscreen ? <Minimize2 className="w-4 h-4 text-amber-400" /> : <Maximize2 className="w-4 h-4 text-cyan-400" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* 3D WebGL Canvas */}
-                  <FruitCuttingCanvas
-                    bladeStyle={activeBladeToUse}
-                    colorTheme={selectedTheme}
-                    isPaused={isGameOver || isPaused}
-                    onSliceFruit={handleSliceFruit}
-                    onBombHit={handleBombHit}
-                    onFrenzyChange={(lvl, lbl) => {
-                      setFrenzyLevel(lvl);
-                      setFrenzyLabel(lbl);
-                    }}
-                    gameResetKey={gameResetKey}
-                    className="relative w-full h-[460px] sm:h-[520px] lg:h-[550px] xl:h-[580px] rounded-3xl overflow-hidden select-none touch-none cursor-crosshair transition-all duration-300"
-                  />
-
-                  {/* Paused Overlay */}
-                  {isPaused && !isGameOver && (
-                    <div className="absolute inset-0 z-30 bg-black/80 backdrop-blur-md rounded-3xl flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-150">
-                      <div className="p-4 rounded-full bg-purple-950/50 border border-purple-500/40 text-amber-400 mb-3 shadow-[0_0_20px_rgba(245,158,11,0.3)]">
-                        <Pause className="w-8 h-8" />
-                      </div>
-                      <h3 className="text-xl font-black text-white tracking-tight uppercase">GAME PAUSED</h3>
-                      <p className="text-xs text-zinc-400 mt-1 max-w-xs">Take a breath, hone your blade, and jump back into the slicing arena.</p>
-                      <button
-                        onClick={() => setIsPaused(false)}
-                        className="mt-5 px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:opacity-95 text-white font-bold text-xs uppercase font-mono tracking-wider shadow-[0_0_20px_rgba(16,185,129,0.4)] flex items-center gap-2 transition"
-                      >
-                        <Play className="w-4 h-4" />
-                        <span>Resume Slicing</span>
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Game Over Modal */}
-                  {isGameOver && (
-                    <div className="absolute inset-0 z-40 bg-black/85 backdrop-blur-md rounded-3xl flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-200">
-                      <div className="cyber-card border border-purple-500/40 rounded-3xl p-8 max-w-md w-full shadow-[0_0_60px_rgba(217,70,239,0.35)] flex flex-col items-center">
-                        {/* Grade Badge */}
-                        <div
-                          style={{ borderColor: grade.color, color: grade.color }}
-                          className="w-16 h-16 rounded-3xl bg-black/60 border-2 flex items-center justify-center text-3xl font-black font-mono shadow-[0_0_30px_currentColor] mb-3"
-                        >
-                          {grade.letter}
-                        </div>
-
-                        <h3 className="text-xl font-black tracking-tight text-white uppercase">{grade.title}</h3>
-                        <p className="text-xs text-zinc-400 mt-1">Arcade 60-second combat simulation finished.</p>
-
-                        <div className="my-6 grid grid-cols-2 gap-3 w-full p-4 rounded-2xl bg-black/50 border border-purple-500/25">
-                          <div className="p-2.5 rounded-xl bg-purple-950/20">
-                            <span className="text-[10px] font-mono uppercase text-zinc-400 block font-semibold">FINAL SCORE</span>
-                            <span className="text-2xl font-black font-mono text-cyan-400">{score}</span>
-                          </div>
-                          <div className="p-2.5 rounded-xl bg-purple-950/20">
-                            <span className="text-[10px] font-mono uppercase text-zinc-400 block font-semibold">MAX COMBO</span>
-                            <span className="text-2xl font-black font-mono text-orange-400">x{maxCombo}</span>
-                          </div>
-                          <div className="p-2.5 rounded-xl bg-purple-950/20">
-                            <span className="text-[10px] font-mono uppercase text-zinc-400 block font-semibold">BEST RECORD</span>
-                            <span className="text-lg font-black font-mono text-amber-300">{highScore}</span>
-                          </div>
-                          <div className="p-2.5 rounded-xl bg-purple-950/20">
-                            <span className="text-[10px] font-mono uppercase text-zinc-400 block font-semibold">RANK TIER</span>
-                            <span className="text-xs font-black font-mono text-fuchsia-300 flex items-center justify-center gap-1 mt-1">
-                              <span>{currentTier.icon}</span>
-                              <span>{currentTier.title}</span>
-                            </span>
-                          </div>
-                        </div>
-
-                        <button
-                          onClick={handleRestart}
-                          className="w-full py-3.5 rounded-xl bg-gradient-to-r from-fuchsia-600 via-purple-600 to-cyan-500 hover:opacity-90 text-white font-black text-xs uppercase tracking-wider transition shadow-[0_0_25px_rgba(217,70,239,0.4)] flex items-center justify-center gap-2 font-mono"
-                        >
-                          <RotateCcw className="w-4 h-4" />
-                          <span>Re-Enter Arena</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* 4. COLOR & BLADE DECK (DIRECTLY UNDER THE ARENA) */}
-                <div className="cyber-card p-5 sm:p-6 rounded-3xl flex flex-col gap-5 shadow-[0_0_35px_rgba(168,85,247,0.15)]">
-                  {/* Header */}
-                  <div className="flex items-center justify-between pb-3.5 border-b border-purple-500/20">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2 rounded-xl bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30">
-                        <Palette className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-black uppercase tracking-wider text-white">
-                          Laser Armory & Color Studio
-                        </h3>
-                        <p className="text-[11px] text-zinc-400">
-                          Real-time Three.js light reflection, dual-pass laser trails & glow aura
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-                      <span className="text-[10px] font-mono font-bold text-cyan-300 uppercase px-2.5 py-1 rounded-md bg-cyan-500/20 border border-cyan-500/30">
-                        LIVE REACTIVE
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Row 1: Gaming Lighting Themes */}
-                  <div className="flex flex-col gap-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-300 font-mono flex items-center gap-1.5">
-                        <Layers className="w-3.5 h-3.5 text-cyan-400" />
-                        <span>Arena Lighting Presets:</span>
-                      </span>
-                      <span className="text-[10px] font-mono text-zinc-400">
-                        Active: <strong className="text-cyan-300">{selectedTheme.name}</strong>
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-                      {COLOR_THEMES.map((theme) => {
-                        const isSelected = selectedTheme.id === theme.id;
-                        return (
-                          <button
-                            key={theme.id}
-                            onClick={() => {
-                              sound.playClick();
-                              setSelectedTheme(theme);
-                            }}
-                            style={{
-                              borderColor: isSelected ? theme.accent : 'rgba(168, 85, 247, 0.2)',
-                              boxShadow: isSelected ? `0 0 20px ${theme.accent}45` : 'none',
-                            }}
-                            className={`p-3 rounded-2xl border text-left transition-all relative overflow-hidden group ${isSelected ? 'bg-purple-950/70' : 'bg-black/45 hover:bg-purple-950/30'
-                              }`}
-                          >
-                            <div className="flex items-center gap-2 mb-1.5">
-                              <span
-                                style={{ backgroundColor: theme.accent }}
-                                className="w-3 h-3 rounded-full shadow-[0_0_8px_currentColor] shrink-0"
-                              />
-                              <span className="text-xs font-bold text-white tracking-tight truncate">
-                                {theme.name}
-                              </span>
-                            </div>
-                            <div
-                              style={{ background: theme.accent }}
-                              className="w-full h-1 rounded-full opacity-60 group-hover:opacity-100 transition-opacity"
-                            />
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Row 2: Equip Blade Laser */}
-                  <div className="flex flex-col gap-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-300 font-mono flex items-center gap-1.5">
-                        <Swords className="w-3.5 h-3.5 text-fuchsia-400" />
-                        <span>Equip Blade Laser Preset:</span>
-                      </span>
-                      <span className="text-[10px] font-mono text-zinc-400">
-                        Equipped: <strong className="text-fuchsia-300">{activeBladeToUse.name}</strong>
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-2.5">
-                      {PRESET_BLADES.map((blade) => {
-                        const isSelected = !isCustomMode && selectedBlade.id === blade.id;
-                        return (
-                          <button
-                            key={blade.id}
-                            onClick={() => {
-                              sound.playClick();
-                              setIsCustomMode(false);
-                              setSelectedBlade(blade);
-                            }}
-                            style={{
-                              borderColor: isSelected ? blade.color : 'rgba(168, 85, 247, 0.2)',
-                              boxShadow: isSelected ? `0 0 20px ${blade.color}45` : 'none',
-                            }}
-                            className={`p-3 rounded-2xl border text-left transition-all relative overflow-hidden ${isSelected ? 'bg-purple-950/70' : 'bg-black/45 hover:bg-purple-950/30'
-                              }`}
-                          >
-                            <div className="flex items-center justify-between mb-1.5">
-                              <div className="flex items-center gap-2">
-                                <span
-                                  style={{ backgroundColor: blade.color }}
-                                  className="w-3 h-3 rounded-full shadow-[0_0_8px_currentColor] shrink-0"
-                                />
-                                <span className="text-xs font-bold text-white tracking-tight truncate">
-                                  {blade.name}
-                                </span>
-                              </div>
-                              {isSelected && (
-                                <span className="text-[9px] font-mono font-bold text-emerald-400 bg-emerald-500/20 px-1.5 py-0.5 rounded">
-                                  ACTIVE
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-[10px] text-zinc-400 truncate leading-snug">
-                              {blade.description}
-                            </p>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Row 3: Custom Color Synthesizer */}
-                  <div className="p-4 rounded-2xl bg-black/55 border border-purple-500/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                        <Sliders className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold uppercase text-white block font-mono">
-                          Custom Color Synthesizer
-                        </span>
-                        <span className="text-[10px] text-zinc-400">
-                          Instantly shifts the Three.js directional lights, laser cutting trail, and bloom aura.
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end flex-wrap">
-                      {/* Quick Color Swatches */}
-                      <div className="flex items-center gap-1.5">
-                        {QUICK_COLORS.map((qc) => (
-                          <button
-                            key={qc.name}
-                            onClick={() => handleCustomColorChange(qc.hex)}
-                            style={{ backgroundColor: qc.hex }}
-                            className={`w-6 h-6 rounded-full transition-transform ${customColor.toLowerCase() === qc.hex.toLowerCase() && isCustomMode
-                                ? 'scale-125 ring-2 ring-white ring-offset-2 ring-offset-black shadow-[0_0_12px_currentColor]'
-                                : 'hover:scale-110 opacity-80 hover:opacity-100'
-                              }`}
-                            title={qc.name}
-                          />
-                        ))}
-                      </div>
-
-                      {/* Native Picker & Hex Input */}
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="color"
-                          value={customColor}
-                          onChange={(e) => handleCustomColorChange(e.target.value)}
-                          className="w-9 h-9 rounded-xl cursor-pointer bg-transparent border-0"
-                        />
-                        <input
-                          type="text"
-                          value={customColor}
-                          onChange={(e) => handleCustomColorChange(e.target.value)}
-                          className="w-24 px-2.5 py-1.5 rounded-xl bg-black/70 border border-purple-500/40 text-xs font-mono font-bold text-cyan-300 text-center uppercase"
-                        />
-                      </div>
-                    </div>
+                {/* Top-right overlay controls */}
+                <div className="absolute top-4 right-4 z-20 pointer-events-none">
+                  <div className="pointer-events-auto flex items-center gap-2">
+                    <button
+                      onClick={() => setShowHelpModal(true)}
+                      className="p-2 rounded-xl bg-black/75 backdrop-blur-md hover:bg-purple-950/70 border border-purple-500/30 text-zinc-300 hover:text-white transition shadow-lg"
+                      title="How to Play"
+                    >
+                      <HelpCircle className="w-4 h-4 text-cyan-400" />
+                    </button>
+                    <button
+                      onClick={toggleFullscreen}
+                      className="p-2 rounded-xl bg-black/75 backdrop-blur-md hover:bg-purple-950/70 border border-purple-500/30 text-zinc-300 hover:text-white transition shadow-lg"
+                      title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Arena'}
+                    >
+                      {isFullscreen ? <Minimize2 className="w-4 h-4 text-amber-400" /> : <Maximize2 className="w-4 h-4 text-cyan-400" />}
+                    </button>
                   </div>
                 </div>
+
+                {/* 3D WebGL Canvas — fills the entire arena div */}
+                <FruitCuttingCanvas
+                  bladeStyle={activeBladeToUse}
+                  colorTheme={selectedTheme}
+                  pace={gamePace}
+                  isPaused={isGameOver || isPaused}
+                  onSliceFruit={handleSliceFruit}
+                  onBombHit={handleBombHit}
+                  onFrenzyChange={(lvl, lbl) => {
+                    setFrenzyLevel(lvl);
+                    setFrenzyLabel(lbl);
+                  }}
+                  gameResetKey={gameResetKey}
+                  className="absolute inset-0 w-full h-full select-none touch-none cursor-crosshair"
+                />
+
+                {/* Paused Overlay */}
+                {isPaused && !isGameOver && (
+                  <div className="absolute inset-0 z-30 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
+                    <div className="p-4 rounded-full bg-purple-950/50 border border-purple-500/40 text-amber-400 mb-3 shadow-[0_0_20px_rgba(245,158,11,0.3)]">
+                      <Pause className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-xl font-black text-white tracking-tight uppercase">GAME PAUSED</h3>
+                    <p className="text-xs text-zinc-400 mt-1 max-w-xs">Take a breath and jump back in.</p>
+                    <button
+                      onClick={() => setIsPaused(false)}
+                      className="mt-5 px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:opacity-95 text-white font-bold text-xs uppercase font-mono tracking-wider shadow-[0_0_20px_rgba(16,185,129,0.4)] flex items-center gap-2 transition"
+                    >
+                      <Play className="w-4 h-4" /><span>Resume</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Game Over Modal */}
+                {isGameOver && (
+                  <div className="absolute inset-0 z-40 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
+                    <div className="cyber-card border border-purple-500/40 rounded-3xl p-8 max-w-md w-full shadow-[0_0_60px_rgba(217,70,239,0.35)] flex flex-col items-center">
+                      <div style={{ borderColor: grade.color, color: grade.color }} className="w-16 h-16 rounded-3xl bg-black/60 border-2 flex items-center justify-center text-3xl font-black font-mono shadow-[0_0_30px_currentColor] mb-3">
+                        {grade.letter}
+                      </div>
+                      <h3 className="text-xl font-black tracking-tight text-white uppercase">{grade.title}</h3>
+                      <p className="text-xs text-zinc-400 mt-1">Arcade 60-second combat finished.</p>
+                      <div className="my-6 grid grid-cols-2 gap-3 w-full p-4 rounded-2xl bg-black/50 border border-purple-500/25">
+                        <div className="p-2.5 rounded-xl bg-purple-950/20">
+                          <span className="text-[10px] font-mono uppercase text-zinc-400 block font-semibold">FINAL SCORE</span>
+                          <span className="text-2xl font-black font-mono text-cyan-400">{score}</span>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-purple-950/20">
+                          <span className="text-[10px] font-mono uppercase text-zinc-400 block font-semibold">MAX COMBO</span>
+                          <span className="text-2xl font-black font-mono text-orange-400">x{maxCombo}</span>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-purple-950/20">
+                          <span className="text-[10px] font-mono uppercase text-zinc-400 block font-semibold">BEST RECORD</span>
+                          <span className="text-lg font-black font-mono text-amber-300">{highScore}</span>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-purple-950/20">
+                          <span className="text-[10px] font-mono uppercase text-zinc-400 block font-semibold">RANK TIER</span>
+                          <span className="text-xs font-black font-mono text-fuchsia-300 flex items-center justify-center gap-1 mt-1">
+                            <span>{currentTier.icon}</span><span>{currentTier.title}</span>
+                          </span>
+                        </div>
+                      </div>
+                      <button onClick={handleRestart} className="w-full py-3.5 rounded-xl bg-gradient-to-r from-fuchsia-600 via-purple-600 to-cyan-500 hover:opacity-90 text-white font-black text-xs uppercase tracking-wider transition shadow-[0_0_25px_rgba(217,70,239,0.4)] flex items-center justify-center gap-2 font-mono">
+                        <RotateCcw className="w-4 h-4" /><span>Re-Enter Arena</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
+            </div>
 
-              {/* 5. RIGHT SIDEBAR: FRUIT HARVEST & RECIPE UNLOCKS */}
-              <div className="lg:col-span-4 xl:col-span-3 flex flex-col gap-5">
+            {/* RIGHT: SIDEBAR — fixed width, scrollable */}
+            <div className="w-full lg:w-80 xl:w-96 shrink-0 flex flex-col lg:overflow-y-auto bg-black/30 border-t lg:border-t-0 lg:border-l border-purple-500/20 p-4 gap-4">
                 {/* Live Fruit Harvest Counter */}
                 <div className="cyber-card p-5 rounded-3xl flex flex-col gap-4 shadow-[0_0_35px_rgba(168,85,247,0.15)]">
                   <div className="flex items-center justify-between pb-2.5 border-b border-purple-500/20">
@@ -909,6 +703,7 @@ export default function FruitHero() {
                     {[
                       { label: 'Watermelon', count: slicedCounts.watermelon, color: '#ff1744', icon: '🍉' },
                       { label: 'Dragonfruit', count: slicedCounts.dragonfruit, color: '#ff007f', icon: '🐉' },
+                      { label: 'Strawberry', count: slicedCounts.strawberry, color: '#ff2a6d', icon: '🍓' },
                       { label: 'Apple', count: slicedCounts.apple, color: '#ef4444', icon: '🍎' },
                       { label: 'Orange', count: slicedCounts.orange, color: '#ea580c', icon: '🍊' },
                       { label: 'Lemon', count: slicedCounts.lemon, color: '#facc15', icon: '🍋' },
@@ -1017,7 +812,6 @@ export default function FruitHero() {
                   </div>
                 </div>
               </div>
-            </div>
 
             {/* HOW TO PLAY & COMBOS MODAL */}
             {showHelpModal && (
@@ -1078,6 +872,15 @@ export default function FruitHero() {
                         Harvest enough specific fruit kinds to craft legendary smoothie blends in the right sidebar for massive bonus score boosts!
                       </p>
                     </div>
+
+                    <div className="p-3 rounded-2xl bg-black/50 border border-purple-500/25 space-y-1">
+                      <span className="font-bold text-fuchsia-400 uppercase tracking-wide block">
+                        5. Slow-Motion Pacing & 3D Depth
+                      </span>
+                      <p className="text-zinc-400 leading-relaxed">
+                        Fruits float up gracefully at relaxed speed with gentle gravity and organic rotation. Move your pointer around to experience real-time 3D camera parallax! Toggle between Slow (0.68x), Relaxed (0.85x), and Fast in the top bar.
+                      </p>
+                    </div>
                   </div>
 
                   <button
@@ -1089,7 +892,10 @@ export default function FruitHero() {
                 </div>
               </div>
             )}
-          </section>
-        </div>
-        );
+          </div>
+          {/* end main area flex row */}
+        {/* end z-10 wrapper */}
+      </section>
+    </div>
+  );
 }

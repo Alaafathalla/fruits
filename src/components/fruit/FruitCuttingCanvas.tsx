@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
-import { FruitKind, BladeStyle, ColorTheme } from '@/types';
+import { FruitKind, BladeStyle, ColorTheme, GamePace } from '@/types';
 import {
   createWholeFruitMesh,
   createSlicedHalves,
@@ -45,6 +45,7 @@ interface TrailPoint {
 interface FruitCuttingCanvasProps {
   bladeStyle: BladeStyle;
   colorTheme: ColorTheme;
+  pace?: GamePace;
   isPaused?: boolean;
   onSliceFruit: (kind: FruitKind, combo: number) => void;
   onBombHit: () => void;
@@ -57,6 +58,7 @@ interface FruitCuttingCanvasProps {
 export default function FruitCuttingCanvas({
   bladeStyle,
   colorTheme,
+  pace = 'relaxed',
   isPaused = false,
   onSliceFruit,
   onBombHit,
@@ -82,6 +84,7 @@ export default function FruitCuttingCanvas({
   // Drag / Slice State
   const isDraggingRef = useRef<boolean>(false);
   const trailPointsRef = useRef<TrailPoint[]>([]);
+  const mouseNormRef = useRef({ x: 0, y: 0 });
   const lastSliceTimeRef = useRef<number>(0);
   const currentComboRef = useRef<number>(0);
   const lastWhooshTimeRef = useRef<number>(0);
@@ -91,12 +94,21 @@ export default function FruitCuttingCanvas({
   const gameStartTimeRef = useRef<number>(performance.now());
   const currentFrenzyLevelRef = useRef<number>(1);
 
+  const paceMultiplier = pace === 'slow' ? 0.75 : pace === 'relaxed' ? 0.9 : 1.1;
+  const pausedRef = useRef(isPaused);
+  pausedRef.current = isPaused;
+  const callbackRef = useRef({ onSliceFruit, onBombHit, onFrenzyChange });
+  callbackRef.current = { onSliceFruit, onBombHit, onFrenzyChange };
+
   // Reset timers on game reset key change
   useEffect(() => {
     gameStartTimeRef.current = performance.now();
     currentFrenzyLevelRef.current = 1;
-    onFrenzyChange?.(1, 'Warmup (1x)');
-  }, [gameResetKey, onFrenzyChange]);
+    callbackRef.current.onFrenzyChange?.(1, 'Warmup (Slow & Calm)');
+    lastSpawnTimeRef.current = performance.now();
+    currentComboRef.current = 0;
+    lastSliceTimeRef.current = 0;
+  }, [gameResetKey]);
 
   // Update dynamic lights when color theme changes
   useEffect(() => {
@@ -108,7 +120,7 @@ export default function FruitCuttingCanvas({
 
   // Spawn fruit with offset for multi-fruit frenzy waves
   const spawnFruitWithOffset = useCallback((scene: THREE.Scene, slotX: number) => {
-    const fruitTypes: FruitKind[] = ['watermelon', 'orange', 'apple', 'lemon', 'kiwi', 'dragonfruit'];
+    const fruitTypes: FruitKind[] = ['watermelon', 'orange', 'apple', 'lemon', 'kiwi', 'dragonfruit', 'strawberry'];
     const isBomb = Math.random() < 0.12;
     const kind: FruitKind = isBomb
       ? 'bomb'
@@ -123,9 +135,9 @@ export default function FruitCuttingCanvas({
     mesh.position.set(startX, startY, startZ);
     scene.add(mesh);
 
-    const targetVx = (Math.random() - 0.5) * 3.4 - startX * 0.26;
-    const targetVy = 13.5 + Math.random() * 4.0;
-    const targetVz = (Math.random() - 0.5) * 1.5;
+    const targetVx = ((Math.random() - 0.5) * 2.2 - startX * 0.22) * paceMultiplier;
+    const targetVy = (10.5 + Math.random() * 2.5) * paceMultiplier;
+    const targetVz = (Math.random() - 0.5) * 0.9 * paceMultiplier;
 
     const fruitObj: ActiveFruit = {
       id: Math.random().toString(36).substring(2, 9),
@@ -134,21 +146,21 @@ export default function FruitCuttingCanvas({
       pos: new THREE.Vector3(startX, startY, startZ),
       vel: new THREE.Vector3(targetVx, targetVy, targetVz),
       rotSpeed: new THREE.Vector3(
-        (Math.random() - 0.5) * 4.5,
-        (Math.random() - 0.5) * 4.5,
+        (Math.random() - 0.5) * 1.9 * paceMultiplier,
+        (Math.random() - 0.5) * 1.9 * paceMultiplier,
         (Math.random() - 0.5) * 4.5
       ),
-      radius: kind === 'watermelon' ? 1.35 : kind === 'dragonfruit' ? 1.25 : 1.1,
+      radius: kind === 'watermelon' ? 1.35 : kind === 'dragonfruit' ? 1.25 : kind === 'strawberry' ? 0.9 : 1.1,
       sliced: false,
     };
 
     activeFruitsRef.current.push(fruitObj);
-  }, []);
+  }, [paceMultiplier]);
 
   // Spawn Explosive 3D Juice Splash Particles
   const createJuiceSplash = (scene: THREE.Scene, pos: THREE.Vector3, kind: FruitKind) => {
     const color = getFruitJuiceColor(kind);
-    const particleCount = kind === 'bomb' ? 50 : 38;
+    const particleCount = kind === 'bomb' ? 36 : 28;
 
     for (let i = 0; i < particleCount; i++) {
       const radius = 0.07 + Math.random() * 0.07;
@@ -178,15 +190,14 @@ export default function FruitCuttingCanvas({
   // Slice Fruit Handler
   const sliceFruit = useCallback((fruit: ActiveFruit, cutAngle: number = 0) => {
     const scene = sceneRef.current;
-    const camera = cameraRef.current;
-    const container = containerRef.current;
-    if (!scene || fruit.sliced) return;
+    if (!scene || fruit.sliced || pausedRef.current) return;
 
     fruit.sliced = true;
     scene.remove(fruit.mesh);
+    activeFruitsRef.current = activeFruitsRef.current.filter((item) => item !== fruit);
 
     const now = performance.now();
-    if (now - lastSliceTimeRef.current < 450) {
+    if (now - lastSliceTimeRef.current < 500) {
       currentComboRef.current += 1;
     } else {
       currentComboRef.current = 1;
@@ -198,7 +209,7 @@ export default function FruitCuttingCanvas({
       sound.playBomb();
       createJuiceSplash(scene, fruit.pos, 'bomb');
       currentComboRef.current = 0;
-      onBombHit();
+      callbackRef.current.onBombHit();
       return;
     }
 
@@ -207,7 +218,7 @@ export default function FruitCuttingCanvas({
     if (currentComboRef.current >= 2) {
       sound.playCombo(currentComboRef.current);
     }
-    onSliceFruit(fruit.kind, currentComboRef.current);
+    callbackRef.current.onSliceFruit(fruit.kind, currentComboRef.current);
 
     // Spawn 3D Particles
     createJuiceSplash(scene, fruit.pos, fruit.kind);
@@ -218,6 +229,8 @@ export default function FruitCuttingCanvas({
     halfB.position.copy(fruit.pos);
     scene.add(halfA, halfB);
 
+    halfA.rotation.z = cutAngle + Math.PI / 2;
+    halfB.rotation.z = cutAngle - Math.PI / 2;
     const normX = Math.cos(cutAngle + Math.PI / 2);
     const normY = Math.sin(cutAngle + Math.PI / 2);
 
@@ -237,15 +250,15 @@ export default function FruitCuttingCanvas({
       vel: halfVelB,
       rotSpeed: new THREE.Vector3(fruit.rotSpeed.x + 3.0, fruit.rotSpeed.y + 2.5, fruit.rotSpeed.z + 3.0),
     });
-  }, [onBombHit, onSliceFruit]);
+  }, []);
 
   // Main Three.js Scene Setup & Loop
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    const width = container.clientWidth;
-    const height = container.clientHeight;
+    const width = Math.max(1, container.clientWidth);
+    const height = Math.max(1, container.clientHeight);
 
     const scene = new THREE.Scene();
     sceneRef.current = scene;
@@ -263,7 +276,8 @@ export default function FruitCuttingCanvas({
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.2;
+    renderer.toneMappingExposure = 1.45;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.domElement.style.position = 'absolute';
     renderer.domElement.style.inset = '0';
     renderer.domElement.style.zIndex = '5';
@@ -285,6 +299,15 @@ export default function FruitCuttingCanvas({
     rimLight.position.set(-6, -4, 6);
     scene.add(rimLight);
 
+    // Studio-like highlights and an understated depth backdrop.
+    const fillLight = new THREE.HemisphereLight(0xc7e9ff, 0x241036, 1.8);
+    scene.add(fillLight);
+    const portalMat = new THREE.MeshBasicMaterial({ color: colorTheme.dirLightHex, transparent: true, opacity: 0.15 });
+    const portal = new THREE.Mesh(new THREE.TorusGeometry(5, 0.025, 8, 96), portalMat);
+    portal.position.set(0, 0, -5);
+    scene.add(portal);
+
+
     // Initial Warmup Wave
     spawnFruitWithOffset(scene, -2.5);
     spawnFruitWithOffset(scene, 2.5);
@@ -298,61 +321,64 @@ export default function FruitCuttingCanvas({
       const dt = Math.min((time - lastTime) / 1000, 0.05);
       lastTime = time;
 
-      if (!isPaused) {
+      const desiredCamX = mouseNormRef.current.x * 0.6;
+      const desiredCamY = -6.8 + mouseNormRef.current.y * 0.4;
+      camera.position.x += (desiredCamX - camera.position.x) * Math.min(1, dt * 3);
+      camera.position.y += (desiredCamY - camera.position.y) * Math.min(1, dt * 3);
+      camera.lookAt(desiredCamX * 0.2, 0, 0);
+      if (!pausedRef.current) {
+        portal.rotation.z += dt * 0.12;
         // Dynamic Frenzy Waves Over Time
         const elapsedSec = (time - gameStartTimeRef.current) / 1000;
         let frenzyLevel = 1;
-        let frenzyLabel = 'Warmup (1x)';
-        let minInterval = 1150;
-        let maxInterval = 1450;
+        let frenzyLabel = 'Warmup (Slow & Calm)';
+        let minInterval = 1600;
+        let maxInterval = 2050;
         let baseCount = 1;
 
         if (elapsedSec >= 50) {
           frenzyLevel = 4;
           frenzyLabel = 'FRUIT STORM (4-6x)';
-          minInterval = 550;
-          maxInterval = 780;
+          minInterval = 800;
+          maxInterval = 1100;
           baseCount = 4;
         } else if (elapsedSec >= 30) {
           frenzyLevel = 3;
           frenzyLabel = 'Hyper Wave (3x)';
-          minInterval = 750;
-          maxInterval = 980;
+          minInterval = 1050;
+          maxInterval = 1400;
           baseCount = 3;
         } else if (elapsedSec >= 15) {
           frenzyLevel = 2;
           frenzyLabel = 'Rising Frenzy (2x)';
-          minInterval = 900;
-          maxInterval = 1150;
+          minInterval = 1300;
+          maxInterval = 1700;
           baseCount = 2;
         }
 
         if (frenzyLevel !== currentFrenzyLevelRef.current) {
           currentFrenzyLevelRef.current = frenzyLevel;
-          onFrenzyChange?.(frenzyLevel, frenzyLabel);
+          callbackRef.current.onFrenzyChange?.(frenzyLevel, frenzyLabel);
           sound.playCombo(frenzyLevel + 1);
         }
 
         // Fruit Spawner
-        const currentInterval = minInterval + Math.random() * (maxInterval - minInterval);
+        const currentInterval = (minInterval + Math.random() * (maxInterval - minInterval)) / paceMultiplier;
         if (time - lastSpawnTimeRef.current > currentInterval) {
           lastSpawnTimeRef.current = time;
           const fruitsToSpawn = baseCount + (Math.random() < 0.4 ? 1 : 0);
           for (let s = 0; s < fruitsToSpawn; s++) {
             const slotX = ((s + 0.5) / fruitsToSpawn - 0.5) * 8.5;
-            setTimeout(() => {
-              if (sceneRef.current) {
-                spawnFruitWithOffset(sceneRef.current, slotX);
-              }
-            }, s * 160);
+            spawnFruitWithOffset(scene, slotX);
           }
         }
       }
 
+      if (!pausedRef.current) {
       // Ballistic flight of fruits
       for (let i = activeFruitsRef.current.length - 1; i >= 0; i--) {
         const f = activeFruitsRef.current[i];
-        f.vel.y -= 9.8 * dt;
+        f.vel.y -= 6.2 * paceMultiplier * paceMultiplier * dt;
         f.pos.addScaledVector(f.vel, dt);
         f.mesh.position.copy(f.pos);
 
@@ -369,7 +395,7 @@ export default function FruitCuttingCanvas({
       // Halves physics
       for (let i = activeHalvesRef.current.length - 1; i >= 0; i--) {
         const h = activeHalvesRef.current[i];
-        h.vel.y -= 9.8 * dt;
+        h.vel.y -= 6.8 * paceMultiplier * paceMultiplier * dt;
         h.pos.addScaledVector(h.vel, dt);
         h.mesh.position.copy(h.pos);
 
@@ -387,7 +413,7 @@ export default function FruitCuttingCanvas({
       for (let i = particlesRef.current.length - 1; i >= 0; i--) {
         const p = particlesRef.current[i];
         p.life += dt;
-        p.vel.y -= 9.8 * dt;
+        p.vel.y -= 8.4 * dt;
         p.pos.addScaledVector(p.vel, dt);
         p.mesh.position.copy(p.pos);
 
@@ -400,6 +426,7 @@ export default function FruitCuttingCanvas({
         }
       }
 
+      }
       // Render 2D Glowing Laser Blade Trail & Popups
       const trailCanvas = trailCanvasRef.current;
       if (trailCanvas) {
@@ -456,8 +483,8 @@ export default function FruitCuttingCanvas({
 
     const handleResize = () => {
       if (!container || !renderer || !camera) return;
-      const w = container.clientWidth;
-      const h = container.clientHeight;
+      const w = Math.max(1, container.clientWidth);
+      const h = Math.max(1, container.clientHeight);
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
@@ -469,31 +496,49 @@ export default function FruitCuttingCanvas({
     };
 
     window.addEventListener('resize', handleResize);
+    const observer = new ResizeObserver(handleResize);
+    observer.observe(container);
     handleResize();
 
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', handleResize);
+      observer.disconnect();
+      sceneRef.current = null;
+      cameraRef.current = null;
+      activeFruitsRef.current = [];
+      activeHalvesRef.current = [];
+      particlesRef.current = [];
+      scene.traverse((object) => {
+        if (object instanceof THREE.Mesh) {
+          object.geometry.dispose();
+          const materials = Array.isArray(object.material) ? object.material : [object.material];
+          for (const material of materials) material.dispose();
+        }
+      });
       renderer.dispose();
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
       }
     };
-  }, [bladeStyle, colorTheme, isPaused, spawnFruitWithOffset, onFrenzyChange, sliceFruit]);
+  }, [bladeStyle, colorTheme, spawnFruitWithOffset, gameResetKey, paceMultiplier]);
 
   // Pointer Movement & Slicing Handlers
   const handlePointerDown = (e: React.PointerEvent) => {
+    if (pausedRef.current) return;
     isDraggingRef.current = true;
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
 
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+    mouseNormRef.current = { x: (x / rect.width) * 2 - 1, y: 1 - (y / rect.height) * 2 };
+    e.currentTarget.setPointerCapture(e.pointerId);
     trailPointsRef.current = [{ x, y, time: performance.now() }];
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDraggingRef.current) return;
+    if (pausedRef.current) return;
     const container = containerRef.current;
     const camera = cameraRef.current;
     if (!container || !camera) return;
@@ -501,6 +546,8 @@ export default function FruitCuttingCanvas({
     const rect = container.getBoundingClientRect();
     const clientX = e.clientX - rect.left;
     const clientY = e.clientY - rect.top;
+    mouseNormRef.current = { x: (clientX / rect.width) * 2 - 1, y: 1 - (clientY / rect.height) * 2 };
+    if (!isDraggingRef.current) return;
 
     const now = performance.now();
     const pts = trailPointsRef.current;
@@ -535,7 +582,8 @@ export default function FruitCuttingCanvas({
           const projY = lastPoint.y + t * vy;
           const d = Math.hypot(fx - projX, fy - projY);
 
-          if (d < fruit.radius * 36) {
+          const projectedRadius = (fruit.radius / Math.max(1, camera.position.distanceTo(fruit.pos))) * (rect.height / (2 * Math.tan((camera.fov * Math.PI) / 360)));
+          if (d < Math.max(16, projectedRadius * 0.85)) {
             const cutAngle = Math.atan2(vy, vx);
             sliceFruit(fruit, cutAngle);
           }
@@ -544,8 +592,11 @@ export default function FruitCuttingCanvas({
     }
   };
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (e: React.PointerEvent) => {
     isDraggingRef.current = false;
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
   };
 
   return (
@@ -555,6 +606,7 @@ export default function FruitCuttingCanvas({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
+      onPointerCancel={handlePointerUp}
       style={{
         boxShadow: `0 0 40px ${bladeStyle.color}33, inset 0 0 30px ${bladeStyle.color}15`,
         borderColor: `${bladeStyle.color}55`,
